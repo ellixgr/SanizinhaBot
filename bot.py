@@ -42,20 +42,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in user_bans:
         tempo_restante = user_bans[user_id] - agora
         if tempo_restante > 0:
-            return # Ignora totalmente para proteger o bot contra ban/flood
+            return 
         else:
             del user_bans[user_id]
 
     # Controle de intervalo rápido (Anti-Spam de cliques)
     if user_id in user_cooldowns and (agora - user_cooldowns[user_id]) < 5:
-        user_bans[user_id] = agora + 300 # Bloqueia por 5 minutos
+        user_bans[user_id] = agora + 300 
         return
     user_cooldowns[user_id] = agora
 
     # Texto de boas-vindas
     texto_boas_vindas = (
         "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
-        "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨𝙚𝙢 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋𝙊 😈\n\n"
+        "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨𝙚𝙢 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋O 😈\n\n"
         "🥵 Aqui é só material BRUTO e sem censura:\n\n"
         "🔥 +130 mil mídias (videos e fotos)\n\n"
         "🔥 𝐏𝐨𝐛𝐫𝐢𝐧𝐡𝐚𝐬 𝐭𝐚𝐫𝐚𝐝𝐚𝐬 𝐪𝐮𝐞 𝐧ã𝐨 𝐭𝐞𝐦 𝐥𝐢𝐦𝐢𝐭𝐞\n"
@@ -73,7 +73,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝗔𝗡𝗘𝗡𝗧𝗘 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝐄𝐍𝗧𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -174,7 +174,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Muito obrigado pela compra! Aqui está o seu link de acesso exclusivo:\n{LINK_DO_GRUPO}"
                 )
             else:
-                # Alerta no topo da tela + Mensagem no chat para garantir que o usuário veja
                 try:
                     await query.answer("❌ Pagamento ainda não identificado!", show_alert=True)
                 except Exception:
@@ -201,7 +200,8 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     print("SanizinhaBot atualizado e rodando...")
-    app.run_polling(drop_pending_updates=True)
+    # Alterado para False para o bot ler as mensagens acumuladas enquanto dormia
+    app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
     main()
