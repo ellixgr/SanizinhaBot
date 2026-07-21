@@ -18,13 +18,13 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-# CONFIGURAÇÕES DO BOT, MERCADO PAGO E DONO
+# CONFIGURAÇÕES DO BOT, MERCADO PAGO E SEU ID DE ADMIN
 TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 
-# ⚠️ COLOQUE SEU ID NUMÉRICO DO TELEGRAM AQUI ABAIXO (Ex: 123456789)
-DONO_ID = 0  # <--- SUBSTITUA O 0 PELO SEU ID REAL
+# SEU ID NUMÉRICO CONFIGURADO CORRETAMENTE
+DONO_ID = 7106368383
 
 # LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START
 VIDEOS_START = [
@@ -33,29 +33,33 @@ VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
-# CONTROLE DE ANTI-FLOOD E SESSÕES
+# CONTROLE DE ESTADOS DE SUPORTE E USUÁRIOS
 user_cooldowns = {}
 user_bans = {}
+usuarios_bloqueados = {}  # user_id -> {"nome": ..., "username": ..., "motivo": ...}
+chat_ativo = {"user_id": None, "timer": None}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     agora = time.time()
 
-    if user_id in user_bans:
-        tempo_restante = user_bans[user_id] - agora
-        if tempo_restante > 0:
-            return 
-        else:
-            del user_bans[user_id]
+    # Se não for o administrador, aplica as regras de anti-flood normalmente
+    if user_id != DONO_ID:
+        if user_id in user_bans:
+            tempo_restante = user_bans[user_id] - agora
+            if tempo_restante > 0:
+                return 
+            else:
+                del user_bans[user_id]
 
-    if user_id in user_cooldowns and (agora - user_cooldowns[user_id]) < 5:
-        user_bans[user_id] = agora + 300 
-        return
-    user_cooldowns[user_id] = agora
+        if user_id in user_cooldowns and (agora - user_cooldowns[user_id]) < 5:
+            user_bans[user_id] = agora + 300 
+            return
+        user_cooldowns[user_id] = agora
 
     texto_boas_vindas = (
         "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
-        "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨em 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋𝙊 😈\n\n"
+        "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨em 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋O 😈\n\n"
         "🥵 Aqui é só material BRUTO e sem censura:\n\n"
         "🔥 +130 mil mídias (videos e fotos)\n\n"
         "🔥 𝐏𝐨𝐛𝐫𝐢𝐧𝐡𝐚𝐬 𝐭𝐚𝐫𝐚𝐝𝐚𝐬 𝐪𝐮𝐞 𝐧ã𝐨 𝐭𝐞𝐦 𝐥𝐢𝐦𝐢𝐭𝐞\n"
@@ -73,8 +77,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝗘𝗡𝗧𝗘 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒Ο 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -95,6 +99,9 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
 
+    if user.id in usuarios_bloqueados:
+        return  # Usuários bloqueados são ignorados
+
     if not args:
         await update.message.reply_text(
             "⚠️ **Uso incorreto do comando!**\n\n"
@@ -106,14 +113,12 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     motivo = " ".join(args)
 
-    # Informa o usuário que o chamado foi aberto
     await update.message.reply_text(
         "✅ **Mensagem enviada para o suporte com sucesso!**\n\n"
-        "O dono do bot recebeu seu chamado e responderá em breve por aqui.",
+        "A equipe responsável recebeu seu chamado e responderá em breve por aqui.",
         parse_mode="Markdown"
     )
 
-    # Se o ID do dono estiver configurado, envia a notificação para ele
     if DONO_ID != 0:
         msg_para_dono = (
             "🚨 **NOVO CHAMADO DE SUPORTE** 🚨\n\n"
@@ -126,12 +131,30 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_message(chat_id=DONO_ID, text=msg_para_dono, parse_mode="Markdown")
         except Exception as e:
-            print(f"Erro ao enviar aviso de suporte para o dono: {e}")
+            print(f"Erro ao enviar aviso de suporte: {e}")
 
-# COMANDO PARA O DONO FALAR COM O USUÁRIO
+# FUNÇÃO PARA ENCERRAR O SUPORTE POR INATIVIDADE (1 MINUTO)
+async def fechar_suporte_por_timeout(context: ContextTypes.DEFAULT_TYPE):
+    if chat_ativo["user_id"] is not None:
+        user_id = chat_ativo["user_id"]
+        chat_ativo["user_id"] = None
+        chat_ativo["timer"] = None
+        try:
+            await context.bot.send_message(
+                chat_id=DONO_ID,
+                text="⏱ **Modo suporte encerrado automaticamente por inatividade (1 minuto sem resposta).**"
+            )
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="🔒 O atendimento de suporte foi encerrado por inatividade. Caso precise de mais ajuda, envie `/suport` novamente."
+            )
+        except Exception as e:
+            print(f"Erro no timeout de suporte: {e}")
+
+# COMANDO PARA O ADMIN FALAR COM O USUÁRIO
 async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
-        return  # Ignora se não for o dono
+        return  
 
     args = context.args
     if len(args) < 2:
@@ -142,39 +165,140 @@ async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    target_user_id = args[0]
+    target_user_id = int(args[0])
     mensagem_resposta = " ".join(args[1:])
+
+    # Atualiza o chat ativo com o usuário atual
+    chat_ativo["user_id"] = target_user_id
+
+    # Cancela timer anterior se houver
+    if chat_ativo["timer"]:
+        chat_ativo["timer"].cancel()
+
+    # Inicia novo cronômetro de 1 minuto (60 segundos)
+    timer = threading.Timer(60.0, lambda: context.application.create_task(fechar_suporte_por_timeout(context)))
+    timer.start()
+    chat_ativo["timer"] = timer
 
     try:
         await context.bot.send_message(
-            chat_id=int(target_user_id),
+            chat_id=target_user_id,
             text=f"🛠 **Mensagem da Administração / Suporte:**\n\n{mensagem_resposta}"
         )
-        await update.message.reply_text("✅ Mensagem enviada com sucesso para o usuário!")
+        await update.message.reply_text(f"✅ Mensagem enviada para o usuário `{target_user_id}`!\n⏱ *Cronômetro de 1 minuto iniciado.*", parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ Erro ao enviar mensagem para o usuário:\n`{e}`", parse_mode="Markdown")
 
-# GERENCIADOR DE MENSAGENS NO PRIVADO (Repassa arquivos, fotos e textos do usuário para o Dono)
+# COMANDO PARA SAIR DO MODO SUPORTE MANUALMENTE (/suportoff)
+async def suportoff_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+
+    if chat_ativo["timer"]:
+        chat_ativo["timer"].cancel()
+        chat_ativo["timer"] = None
+
+    if chat_ativo["user_id"] is not None:
+        target_user = chat_ativo["user_id"]
+        chat_ativo["user_id"] = None
+        await update.message.reply_text("🔴 **Modo suporte desativado com sucesso.**")
+        try:
+            await context.bot.send_message(
+                chat_id=target_user,
+                text="🔒 O atendimento de suporte foi encerrado."
+            )
+        except Exception:
+            pass
+    else:
+        await update.message.reply_text("ℹ️ Não há nenhum atendimento de suporte ativo no momento.")
+
+# COMANDO PARA LISTAR USUÁRIOS BLOQUEADOS (/bloqueados)
+async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+
+    if not usuarios_bloqueados:
+        await update.message.reply_text("📂 Não há usuários bloqueados/ignorados no momento.")
+        return
+
+    texto = "🚫 **Lista de Usuários Bloqueados / Ignorados:**\n\n"
+    for uid, dados in usuarios_bloqueados.items():
+        texto += (
+            f"🆔 **ID:** `{uid}`\n"
+            f"👤 **Nome:** {dados['nome']}\n"
+            f"🔗 **Username:** @{dados['username']}\n"
+            f"📌 **Motivo:** {dados['motivo']}\n"
+            f"-----------------------------------\n"
+        )
+    
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
+# COMANDO PARA DESBLOQUEAR O USUÁRIO (/desbloquear)
+async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+
+    args = context.args
+    if not args:
+        await update.message.reply_text(
+            "⚠️ **Uso incorreto!**\n"
+            "Informe o ID ou username do usuário.\n"
+            "Exemplo: `/desbloquear 123456789` ou `/desbloquear @username`",
+            parse_mode="Markdown"
+        )
+        return
+
+    alvo = args[0].strip().replace("@", "")
+    removido = False
+
+    # Tenta remover por ID direto ou por username
+    for uid in list(usuarios_bloqueados.keys()):
+        dados = usuarios_bloqueados[uid]
+        if str(uid) == alvo or dados['username'].lower() == alvo.lower():
+            del usuarios_bloqueados[uid]
+            removido = True
+            await update.message.reply_text(f"✅ Usuário `{uid}` (`@{dados['username']}`) foi **desbloqueado** com sucesso!", parse_mode="Markdown")
+            break
+
+    if not removido:
+        await update.message.reply_text("❌ Nenhum usuário encontrado com esse ID ou username na lista de bloqueados.")
+
+# GERENCIADOR DE MENSAGENS NO PRIVADO
 async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
-    # Se quem mandou a mensagem for o dono no chat privado e ele não estiver respondendo via /falar, ignora
     if user.id == DONO_ID:
         return
 
-    # Se for mensagem de chat privado de um cliente comum, encaminha para o Dono
+    if user.id in usuarios_bloqueados:
+        return
+
+    # Se o usuário mandar mensagem e houver um chat ativo com ele, renova o cronômetro de 1 minuto
+    if chat_ativo["user_id"] == user.id:
+        if chat_ativo["timer"]:
+            chat_ativo["timer"].cancel()
+        timer = threading.Timer(60.0, lambda: context.application.create_task(fechar_suporte_por_timeout(context)))
+        timer.start()
+        chat_ativo["timer"] = timer
+
     if update.effective_chat.type == "private" and DONO_ID != 0:
-        await context.bot.forward_message(
-            chat_id=DONO_ID,
-            from_chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        # Envia um lembrete prático do ID do usuário junto com o encaminhamento
-        await context.bot.send_message(
-            chat_id=DONO_ID,
-            text=f"⬆️ *Mensagem recebida do usuário ID:* `{user.id}` ({user.first_name})\nPara responder: `/falar {user.id} sua_mensagem`",
-            parse_mode="Markdown"
-        )
+        try:
+            await context.bot.forward_message(
+                chat_id=DONO_ID,
+                from_chat_id=update.effective_chat.id,
+                message_id=update.effective_message.message_id
+            )
+            # Salva dados para caso queira gerenciar bloqueios futuros se necessário
+            usuarios_bloqueados_temp_nome = user.first_name if user.first_name else "Desconhecido"
+            usuarios_bloqueados_temp_username = user.username if user.username else "Sem username"
+            
+            await context.bot.send_message(
+                chat_id=DONO_ID,
+                text=f"⬆️ *Mensagem recebida do usuário ID:* `{user.id}` ({usuarios_bloqueados_temp_nome})\nPara responder: `/falar {user.id} sua_mensagem`",
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            print(f"Erro ao encaminhar mensagem: {e}")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -285,16 +409,17 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # Handlers de comandos e botões
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("falar", falar_cmd))
+    app.add_handler(CommandHandler("suportoff", suportoff_cmd))
+    app.add_handler(CommandHandler("bloqueados", bloqueados_cmd))
+    app.add_handler(CommandHandler("desbloquear", desbloquear_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    # Handler para capturar qualquer mensagem enviada pelos usuários no privado (fotos, arquivos, textos)
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot atualizado com sistema de suporte e rodando...")
+    print("SanizinhaBot com suporte aprimorado, cronômetro e bloqueios rodando...")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
