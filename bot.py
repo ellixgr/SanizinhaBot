@@ -5,7 +5,6 @@ from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Servidor web falso apenas para o Render não reclamar de porta fechada
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -16,8 +15,7 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-# Credenciais
-TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
+TELEGRAM_TOKEN = "7091341249:AAFA3E1oNhCJWv36TUKgJmo4xpgqz1WwB9o"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_PRODUTO = "https://ellixgr.github.io/flow/"
 VALOR_PRODUTO = 10.00
@@ -37,23 +35,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "comprar":
         await query.edit_message_text("⏳ Gerando seu PIX, aguarde um instante...")
 
+        user = update.effective_user
+        nome = user.first_name if user.first_name else "Cliente"
+        sobrenome = user.last_name if user.last_name else "Telegram"
+
         url = "https://api.mercadopago.com/v1/payments"
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(update.update_id)
         }
         payload = {
             "transaction_amount": VALOR_PRODUTO,
             "description": "Acesso VIP / Novo Site",
             "payment_method_id": "pix",
             "payer": {
-                "email": "cliente@telegrambot.com",
-                "first_name": "Cliente",
-                "last_name": "Telegram",
-                "identification": {
-                    "type": "CPF",
-                    "number": "19119119119"
-                }
+                "email": f"user_{user.id}@telegrambot.com",
+                "first_name": nome,
+                "last_name": sobrenome
             }
         }
 
@@ -76,7 +75,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]]
             await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            await query.message.reply_text("❌ Erro ao gerar o PIX. Tente novamente mais tarde.")
+            print("Erro Mercado Pago:", response.text)
+            await query.message.reply_text(f"❌ Erro ao gerar o PIX:\n`{response.text}`", parse_mode="Markdown")
 
     elif query.data.startswith("check_"):
         payment_id = query.data.split("_")[1]
@@ -100,11 +100,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("❌ Erro ao verificar pagamento. Tente novamente.", show_alert=True)
 
 def main():
-    # Inicia o servidor web em segundo plano para o Render
     t = threading.Thread(target=run_web)
     t.start()
 
-    # Inicia o bot do Telegram
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
