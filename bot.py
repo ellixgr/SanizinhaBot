@@ -15,7 +15,7 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-TELEGRAM_TOKEN = "7091341249:AAFA3E1oNhCJWv36TUKgJmo4xpgqz1WwB9o"
+TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_PRODUTO = "https://ellixgr.github.io/flow/"
 VALOR_PRODUTO = 10.00
