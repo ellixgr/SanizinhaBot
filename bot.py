@@ -80,7 +80,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]]
             await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            # Mostra o erro exato que o Mercado Pago mandou
             erro_mp = response.text[:300]
             print("Erro Mercado Pago:", response.text)
             await query.message.reply_text(f"❌ Erro do Mercado Pago:\n`{erro_mp}`", parse_mode="Markdown")
