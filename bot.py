@@ -1,12 +1,26 @@
 import os
 import requests
+import threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
+# Servidor web falso apenas para o Render não reclamar de porta fechada
+app_web = Flask(__name__)
+
+@app_web.route('/')
+def home():
+    return "SanizinhaBot está online!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app_web.run(host="0.0.0.0", port=port)
+
+# Credenciais
 TELEGRAM_TOKEN = "7091341249:AAFA3E1oNhCJWv36TUKgJmo4xpgqz1WwB9o"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
-LINK_DO_PRODUTO = "https://ellixgr.github.io/flow/"  # Link entregue após o pagamento
-VALOR_PRODUTO = 10.00  # Valor do produto em reais
+LINK_DO_PRODUTO = "https://ellixgr.github.io/flow/"
+VALOR_PRODUTO = 10.00
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("💳 Comprar Acesso (PIX)", callback_data="comprar")]]
@@ -85,10 +99,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.answer("❌ Erro ao verificar pagamento. Tente novamente.", show_alert=True)
 
-if __name__ == "__main__":
+def main():
+    # Inicia o servidor web em segundo plano para o Render
+    t = threading.Thread(target=run_web)
+    t.start()
+
+    # Inicia o bot do Telegram
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando...")
+    print("Bot do Telegram rodando...")
     app.run_polling()
+
+if __name__ == "__main__":
+    main()
