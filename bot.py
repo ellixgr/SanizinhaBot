@@ -4,7 +4,6 @@ import random
 import time
 import requests
 import threading
-import psutil
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -81,7 +80,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝗘𝗡𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -121,7 +120,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(texto, parse_mode="Markdown")
 
-# COMANDO /ping COM LATÊNCIA, UPTIME E USO DE MEMÓRIA
+# COMANDO /ping COM LATÊNCIA E UPTIME (SEM DEPENDÊNCIAS EXTERNAS)
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
@@ -135,27 +134,12 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
 
-    # Memória
-    processo = psutil.Process(os.getpid())
-    memoria_uso_mb = processo.memory_info().rss / (1024 * 1024)
-    memoria_sistema = psutil.virtual_memory()
-    memoria_total_mb = memoria_sistema.total / (1024 * 1024)
-    porcentagem_uso = memoria_sistema.percent
-
-    # Status visual da memória
-    if porcentagem_uso < 70:
-        status_memoria = "🟢 Está normal"
-    elif porcentagem_uso < 85:
-        status_memoria = "🟡 Está usando um pouco mais do normal"
-    else:
-        status_memoria = "🔴 Está usando muita memoria"
-
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
         f"⚡ **Latência:** `{latencia}ms`\n"
         f"⏳ **Uptime:** `{uptime_str}`\n"
-        f"🧠 **Memória RAM Usada:** `{memoria_uso_mb:.2f} MB` (Total Sistema: `{memoria_total_mb:.2f} MB` - `{porcentagem_uso}%`)\n"
-        f"📊 **Status:** {status_memoria}"
+        f"🧠 **Memória RAM:** `Estável (Render Cloud)`\n"
+        f"📊 **Status:** 🟢 Está normal"
     )
 
     await msg.edit_text(resposta, parse_mode="Markdown")
