@@ -52,7 +52,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user_cooldowns[user_id] = agora
 
-    # Texto de boas-vindas solicitado
+    # Texto de boas-vindas
     texto_boas_vindas = (
         "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
         "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨𝙚𝙢 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋𝙊 😈\n\n"
@@ -70,15 +70,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👇 Escolha o seu plano abaixo:"
     )
 
-    # Botões com os valores solicitados
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝐍𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝗔𝗡𝗘𝗡𝗧𝗘 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Escolhe um vídeo aleatório da lista
     video_escolhido = random.choice(VIDEOS_START)
 
     try:
@@ -88,21 +86,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
     except Exception:
-        # Fallback caso dê erro no envio do vídeo por instabilidade da URL
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    user_id = update.effective_user.id
-    
-    try:
-        await query.answer()
-    except Exception:
-        pass
-
     data = query.data
 
     if data.startswith("comprar_"):
+        try:
+            await query.answer()
+        except Exception:
+            pass
+
         valor = float(data.split("_")[1])
         
         try:
@@ -141,21 +136,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             payment_id = resp_data["id"]
             qr_data = resp_data.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code", "")
             
-            msg = (
-                f"✅ **PIX Gerado com Sucesso!**\n\n"
-                f"💰 **Valor:** R$ {valor:.2f}\n\n"
-                "👇 *Clique no botão abaixo para copiar a chave Pix automaticamente:*"
-            )
-            
-            # Botão com a chave Pix embutida (url com scheme 'copy' ou o próprio código no callback / botão de URL se suportado, 
-            # como o Telegram aceita URL type nos botões inline, podemos usar um truque de callback com alerta ou botões lado a lado)
-            keyboard = [
-                [InlineKeyboardButton("📋 Copiar Chave Pix", url=f"https://api.whatsapp.com/send?text={qr_data}")], # Atalho seguro ou instrução clara
-                [InlineKeyboardButton("🔄 Verificar se Já Paguei", callback_data=f"check_{payment_id}")]
-            ]
-            
-            # Nota: Como o Telegram não permite copiar texto direto por botão de callback padrão sem abrir link, 
-            # vamos mandar o código em bloco de código para facilitar o toque e colocar o botão de verificação logo abaixo:
             msg_completa = (
                 f"✅ **PIX Gerado com Sucesso!**\n\n"
                 f"💰 **Valor:** R$ {valor:.2f}\n\n"
@@ -185,14 +165,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = resp_data.get("status")
             
             if status == "approved":
+                try:
+                    await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
+                except Exception:
+                    pass
                 await query.message.reply_text(
                     f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
                     f"Muito obrigado pela compra! Aqui está o seu link de acesso exclusivo:\n{LINK_DO_GRUPO}"
                 )
             else:
-                await query.answer("❌ O pagamento ainda não foi identificado. Pague o Pix e tente novamente em instantes!", show_alert=True)
+                # Alerta no topo da tela + Mensagem no chat para garantir que o usuário veja
+                try:
+                    await query.answer("❌ Pagamento ainda não identificado!", show_alert=True)
+                except Exception:
+                    pass
+                await query.message.reply_text(
+                    "⏳ **Pagamento ainda não identificado!**\n\n"
+                    "Realize o pagamento no app do seu banco via Pix Copia e Cola. "
+                    "Se você já pagou, aguarde de 5 a 10 segundos para o banco processar e clique no botão novamente.",
+                    parse_mode="Markdown"
+                )
         else:
-            await query.answer("❌ Erro ao verificar pagamento. Tente novamente.", show_alert=True)
+            try:
+                await query.answer("❌ Erro ao consultar o Mercado Pago.", show_alert=True)
+            except Exception:
+                pass
+            await query.message.reply_text("❌ Não foi possível verificar o pagamento no momento. Tente novamente em instantes.")
 
 def main():
     t = threading.Thread(target=run_web)
@@ -202,7 +200,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("SanizinhaBot atualizado e rodando com segurança...")
+    print("SanizinhaBot atualizado e rodando...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
