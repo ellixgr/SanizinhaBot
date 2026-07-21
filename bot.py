@@ -80,8 +80,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]]
             await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
         else:
+            # Mostra o erro exato que o Mercado Pago mandou
+            erro_mp = response.text[:300]
             print("Erro Mercado Pago:", response.text)
-            await query.message.reply_text(f"❌ Erro ao gerar o PIX:\n`{response.text}`", parse_mode="Markdown")
+            await query.message.reply_text(f"❌ Erro do Mercado Pago:\n`{erro_mp}`", parse_mode="Markdown")
 
     elif query.data.startswith("check_"):
         payment_id = query.data.split("_")[1]
@@ -113,7 +115,6 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     print("Bot do Telegram rodando...")
-    # drop_pending_updates=True limpa qualquer requisição presa e resolve o conflito
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
