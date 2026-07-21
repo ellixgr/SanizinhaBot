@@ -4,6 +4,7 @@ import random
 import time
 import requests
 import threading
+import psutil
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -26,6 +27,9 @@ LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 # SEU ID NUMÉRICO CONFIGURADO CORRETAMENTE
 DONO_ID = 7106368383
 
+# TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
+TEMPO_INICIAL = time.time()
+
 # LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START
 VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4",
@@ -36,14 +40,13 @@ VIDEOS_START = [
 # CONTROLE DE ESTADOS DE SUPORTE E USUÁRIOS
 user_cooldowns = {}
 user_bans = {}
-usuarios_bloqueados = {}  # user_id -> {"nome": ..., "username": ..., "motivo": ...}
+usuarios_bloqueados = {}  
 chat_ativo = {"user_id": None, "timer": None}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     agora = time.time()
 
-    # Se não for o administrador, aplica as regras de anti-flood normalmente
     if user_id != DONO_ID:
         if user_id in user_bans:
             tempo_restante = user_bans[user_id] - agora
@@ -77,8 +80,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒Ο 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝗘𝗡𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -94,13 +97,76 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
+# COMANDO /comandos PARA LISTAR TUDO
+async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    texto = (
+        "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
+        "👤 **Comandos para Membros:**\n"
+        "• `/start` - Inicia o bot e exibe os planos\n"
+        "• `/suport [mensagem]` - Envia uma mensagem para o suporte\n"
+        "• `/comandos` - Mostra esta lista de comandos\n"
+        "• `/ping` - Mostra a latência e o status da hospedagem\n\n"
+    )
+
+    if user_id == DONO_ID:
+        texto += (
+            "🛠 **Comandos Exclusivos do Dono:**\n"
+            "• `/falar [ID] [mensagem]` - Responde a um usuário específico\n"
+            "• `/suportoff` - Encerra manualmente o atendimento de suporte ativo\n"
+            "• `/bloqueados` - Lista os usuários bloqueados/ignorados\n"
+            "• `/desbloquear [ID ou @username]` - Remove o bloqueio de um usuário\n"
+        )
+
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
+# COMANDO /ping COM LATÊNCIA, UPTIME E USO DE MEMÓRIA
+async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    inicio = time.time()
+    msg = await update.message.reply_text("pong 🏓...")
+    fim = time.time()
+    latencia = int((fim - inicio) * 1000)
+
+    # Uptime
+    uptime_segundos = int(time.time() - TEMPO_INICIAL)
+    horas = uptime_segundos // 3600
+    minutos = (uptime_segundos % 3600) // 60
+    segundos = uptime_segundos % 60
+    uptime_str = f"{horas}h {minutos}m {segundos}s"
+
+    # Memória
+    processo = psutil.Process(os.getpid())
+    memoria_uso_mb = processo.memory_info().rss / (1024 * 1024)
+    memoria_sistema = psutil.virtual_memory()
+    memoria_total_mb = memoria_sistema.total / (1024 * 1024)
+    porcentagem_uso = memoria_sistema.percent
+
+    # Status visual da memória
+    if porcentagem_uso < 70:
+        status_memoria = "🟢 Está normal"
+    elif porcentagem_uso < 85:
+        status_memoria = "🟡 Está usando um pouco mais do normal"
+    else:
+        status_memoria = "🔴 Está usando muita memoria"
+
+    resposta = (
+        f"🏓 **PONG! Informações do Sistema:**\n\n"
+        f"⚡ **Latência:** `{latencia}ms`\n"
+        f"⏳ **Uptime:** `{uptime_str}`\n"
+        f"🧠 **Memória RAM Usada:** `{memoria_uso_mb:.2f} MB` (Total Sistema: `{memoria_total_mb:.2f} MB` - `{porcentagem_uso}%`)\n"
+        f"📊 **Status:** {status_memoria}"
+    )
+
+    await msg.edit_text(resposta, parse_mode="Markdown")
+
 # COMANDO DE SUPORTE PARA O CLIENTE
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
 
     if user.id in usuarios_bloqueados:
-        return  # Usuários bloqueados são ignorados
+        return  
 
     if not args:
         await update.message.reply_text(
@@ -168,14 +234,11 @@ async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user_id = int(args[0])
     mensagem_resposta = " ".join(args[1:])
 
-    # Atualiza o chat ativo com o usuário atual
     chat_ativo["user_id"] = target_user_id
 
-    # Cancela timer anterior se houver
     if chat_ativo["timer"]:
         chat_ativo["timer"].cancel()
 
-    # Inicia novo cronômetro de 1 minuto (60 segundos)
     timer = threading.Timer(60.0, lambda: context.application.create_task(fechar_suporte_por_timeout(context)))
     timer.start()
     chat_ativo["timer"] = timer
@@ -251,7 +314,6 @@ async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     alvo = args[0].strip().replace("@", "")
     removido = False
 
-    # Tenta remover por ID direto ou por username
     for uid in list(usuarios_bloqueados.keys()):
         dados = usuarios_bloqueados[uid]
         if str(uid) == alvo or dados['username'].lower() == alvo.lower():
@@ -273,7 +335,21 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
     if user.id in usuarios_bloqueados:
         return
 
-    # Se o usuário mandar mensagem e houver um chat ativo com ele, renova o cronômetro de 1 minuto
+    # Resposta automática para "oi" ou "oii"
+    texto_usuario = update.effective_message.text
+    if texto_usuario and texto_usuario.strip().lower() in ["oi", "oii", "oiii", "ola", "olá"]:
+        keyboard = [
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝗘𝗡𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            "Oi, tudo bem? Vai assinar os seus conteúdos? 😏\n\nEscolha o seu plano abaixo:",
+            reply_markup=reply_markup
+        )
+        return
+
     if chat_ativo["user_id"] == user.id:
         if chat_ativo["timer"]:
             chat_ativo["timer"].cancel()
@@ -288,13 +364,12 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
                 from_chat_id=update.effective_chat.id,
                 message_id=update.effective_message.message_id
             )
-            # Salva dados para caso queira gerenciar bloqueios futuros se necessário
-            usuarios_bloqueados_temp_nome = user.first_name if user.first_name else "Desconhecido"
-            usuarios_bloqueados_temp_username = user.username if user.username else "Sem username"
+            
+            nome_temp = user.first_name if user.first_name else "Desconhecido"
             
             await context.bot.send_message(
                 chat_id=DONO_ID,
-                text=f"⬆️ *Mensagem recebida do usuário ID:* `{user.id}` ({usuarios_bloqueados_temp_nome})\nPara responder: `/falar {user.id} sua_mensagem`",
+                text=f"⬆️ *Mensagem recebida do usuário ID:* `{user.id}` ({nome_temp})\nPara responder: `/falar {user.id} sua_mensagem`",
                 parse_mode="Markdown"
             )
         except Exception as e:
@@ -410,6 +485,8 @@ def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("comandos", comandos_cmd))
+    app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("falar", falar_cmd))
     app.add_handler(CommandHandler("suportoff", suportoff_cmd))
@@ -419,7 +496,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot com suporte aprimorado, cronômetro e bloqueios rodando...")
+    print("SanizinhaBot totalmente otimizado e rodando...")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
