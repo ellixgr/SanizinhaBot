@@ -1,4 +1,5 @@
 import os
+import uuid
 import requests
 import threading
 from flask import Flask
@@ -46,10 +47,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sobrenome = user.last_name if user.last_name else "Telegram"
 
         url = "https://api.mercadopago.com/v1/payments"
+        
+        # CHAVE IDEMPOTENCY OBRIGATÓRIA ADICIONADA AQUI
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(uuid.uuid4())
         }
+        
         payload = {
             "transaction_amount": VALOR_PRODUTO,
             "description": "Acesso VIP",
