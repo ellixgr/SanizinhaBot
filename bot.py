@@ -1,4 +1,3 @@
-
 import os
 import requests
 import threading
@@ -114,7 +113,8 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     print("Bot do Telegram rodando...")
-    app.run_polling()
+    # drop_pending_updates=True limpa qualquer requisição presa e resolve o conflito
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
