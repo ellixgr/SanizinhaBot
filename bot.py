@@ -1,3 +1,4 @@
+
 import os
 import requests
 import threading
@@ -30,10 +31,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception:
+        pass
 
     if query.data == "comprar":
-        await query.edit_message_text("⏳ Gerando seu PIX, aguarde um instante...")
+        try:
+            await query.edit_message_text("⏳ Gerando seu PIX, aguarde um instante...")
+        except Exception:
+            pass
 
         user = update.effective_user
         nome = user.first_name if user.first_name else "Cliente"
@@ -42,12 +49,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         url = "https://api.mercadopago.com/v1/payments"
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-            "Content-Type": "application/json",
-            "X-Idempotency-Key": str(update.update_id)
+            "Content-Type": "application/json"
         }
         payload = {
             "transaction_amount": VALOR_PRODUTO,
-            "description": "Acesso VIP / Novo Site",
+            "description": "Acesso VIP",
             "payment_method_id": "pix",
             "payer": {
                 "email": f"user_{user.id}@telegrambot.com",
@@ -90,7 +96,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = data.get("status")
             
             if status == "approved":
-                await query.edit_message_text(
+                await query.message.reply_text(
                     f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
                     f"Muito obrigado pela compra. Aqui está o seu link de acesso:\n{LINK_DO_PRODUTO}"
                 )
