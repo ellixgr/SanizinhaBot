@@ -16,7 +16,6 @@ from telegram.ext import (
     ContextTypes,
     ApplicationHandlerStop
 )
-
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -31,23 +30,19 @@ def run_web():
 TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 
-# LINK DO SEU GRUPO VIP DE CLIENTES
-LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
+LINK_DO_GRUPO = "https://t.me/+ZeYMNaaCZsdhZjMx"
 
-# SEU ID PESSOAL DO TELEGRAM (DESTINO DAS NOTIFICAÇÕES)
 GRUPO_ALVO_ID = 7711945457
 
-# TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
 
-# LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START (DE VOLTA NA ATIVA!)
 VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4",
     "https://ellixgr.github.io/x23wzp/1783749549965.mp4",
     "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
-# CONTROLE DE ESTADOS E SPAM
+# 𝐄𝐒𝐓𝐀𝐃𝐎𝐒 𝐄 𝐒𝐏𝐀𝐌
 ultimo_envio = {}          
 contador_spam = {}         
 usuarios_bloqueados = {}     
@@ -57,11 +52,9 @@ pagamentos_notificados = set()
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user:
-        return
-    
+        return  
     user_id = user.id
     agora = time.time()
-
     if user_id in bloqueio_temporario:
         tempo_restante = bloqueio_temporario[user_id] - agora
         if tempo_restante > 0:
@@ -70,16 +63,13 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             del bloqueio_temporario[user_id]
             if user_id in contador_spam:
                 del contador_spam[user_id]
-
     if user_id in usuarios_bloqueados:
         raise ApplicationHandlerStop
-
     if user_id in ultimo_envio:
         diferenca = agora - ultimo_envio[user_id]
         if diferenca < 5.0:
             contador_spam[user_id] = contador_spam.get(user_id, 0) + 1
             ultimo_envio[user_id] = agora
-
             if contador_spam[user_id] >= 6:
                 bloqueio_temporario[user_id] = agora + 600  
                 contador_spam[user_id] = 0
@@ -91,10 +81,8 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                     )
                 except Exception:
                     pass
-                raise ApplicationHandlerStop
-            
+                raise ApplicationHandlerStop           
             raise ApplicationHandlerStop
-
     ultimo_envio[user_id] = agora
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,12 +123,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
-
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
-    
-    resposta = (
+       resposta = (
         f"📊 **INFORMAÇÕES DE ID:**\n\n"
         f"💬 **Nome do Chat:** {chat.title if chat.title else 'Privado'}\n"
         f"🆔 **ID deste Chat/Grupo:** `{chat.id}`\n"
@@ -152,7 +138,6 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user:
         return
-
     nome = user.first_name if user.first_name else "Sem nome"
     username = f"@{user.username}" if user.username else "Sem @username"
     user_id = user.id
@@ -164,9 +149,7 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🆔 **ID do Telegram:** `{user_id}`\n\n"
         f"✅ *O bot enviou esta mensagem diretamente para o seu privado com sucesso!*"
     )
-
     await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no seu privado.")
-
     try:
         await context.bot.send_message(
             chat_id=GRUPO_ALVO_ID,
@@ -200,7 +183,6 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     minutos = (uptime_segundos % 3600) // 60
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
-
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
         f"⚡ **Latência:** `{latencia}ms`\n"
@@ -229,7 +211,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
         valor = float(data.split("_")[1])
-        
+      
         try:
             await query.edit_message_caption(caption="⏳ Gerando seu PIX, aguarde um instante...", reply_markup=None)
         except Exception:
@@ -271,40 +253,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 **Valor:** R$ {valor:.2f}\n\n"
                 "📋 **Código Pix Copia e Cola:**\n"
                 f"```\n{qr_data}\n```\n"
-                "💡 *Basta tocar em cima do código acima para copiar automaticamente.*"
             )
-
             keyboard_final = [
                 [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]
             ]
-
             await query.message.reply_text(msg_completa, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard_final))
         else:
             erro_mp = response.text[:300]
             await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n`{erro_mp}`", parse_mode="Markdown")
-
     elif data.startswith("check_"):
-        payment_id = data.split("_")[1]
-        
+        payment_id = data.split("_")[1]       
         url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
-        headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-        
+        headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}      
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             resp_data = response.json()
-            status = resp_data.get("status")
-            
+            status = resp_data.get("status")       
             if status == "approved":
                 try:
                     await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
                 except Exception:
-                    pass
-                
+                    pass              
                 await query.message.reply_text(
                     f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
                     f"Muito obrigado pela compra! Aqui está o seu link de acesso exclusivo:\n{LINK_DO_GRUPO}"
                 )
-
                 if payment_id not in pagamentos_notificados:
                     pagamentos_notificados.add(payment_id)
 
@@ -382,7 +355,7 @@ def main():
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando com os vídeos, caixinha de código e privado configurados!")
+    print("𝐓𝐎 𝐎𝐍 𝐁𝐁 😗")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
