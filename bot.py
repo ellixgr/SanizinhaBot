@@ -32,7 +32,7 @@ TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 
 # LINK DO SEU GRUPO VIP DE CLIENTES
-LINK_DO_GRUPO = "[https://t.me/+LCsNZuCgCWxiYzNh](https://t.me/+LCsNZuCgCWxiYzNh)"
+LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
 
 # SEU ID PESSOAL DO TELEGRAM (DESTINO DAS NOTIFICAÇÕES)
 GRUPO_ALVO_ID = 7711945457
@@ -40,11 +40,11 @@ GRUPO_ALVO_ID = 7711945457
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
 
-# LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START
+# LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START (DE VOLTA NA ATIVA!)
 VIDEOS_START = [
-    "[https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4](https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4)",
-    "[https://ellixgr.github.io/x23wzp/1783749549965.mp4](https://ellixgr.github.io/x23wzp/1783749549965.mp4)",
-    "[https://ellixgr.github.io/x23wzp/1783749723785.mp4](https://ellixgr.github.io/x23wzp/1783749723785.mp4)"
+    "https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4",
+    "https://ellixgr.github.io/x23wzp/1783749549965.mp4",
+    "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
 # CONTROLE DE ESTADOS E SPAM
@@ -180,7 +180,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
-        "• `/start` - Inicia o bot e exibe os planos\n"
+        "• `/start` - Inicia o bot e exibe os planos (com os vídeos aleatórios)\n"
         "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
         "• `/teste eu` - Testa o envio de dados direto para o seu privado\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
@@ -242,7 +242,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         nome = user.first_name if user.first_name else "Cliente"
         sobrenome = user.last_name if user.last_name else "Telegram"
 
-        url = "[https://api.mercadopago.com/v1/payments](https://api.mercadopago.com/v1/payments)"
+        url = "https://api.mercadopago.com/v1/payments"
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
             "Content-Type": "application/json",
@@ -286,7 +286,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("check_"):
         payment_id = data.split("_")[1]
         
-        url = f"[https://api.mercadopago.com/v1/payments/](https://api.mercadopago.com/v1/payments/){payment_id}"
+        url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
         headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
         
         response = requests.get(url, headers=headers)
@@ -382,7 +382,7 @@ def main():
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando perfeitamente e enviando dados completos no seu privado!")
+    print("Bot rodando com os vídeos, caixinha de código e privado configurados!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
