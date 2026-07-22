@@ -45,16 +45,16 @@ VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
-# CONTROLE DE ESTADOS DE SUPORTE E USUÁRIOS
-flood_control = {}
-usuarios_bloqueados = {}  
+# CONTROLE DE ESTADOS, SPAM E BLOQUEIOS TEMPORÁRIOS/PERMANENTES
+ultimo_envio = {}       # Controla o intervalo de 5 segundos entre uma msg/comando e outra
+contador_spam = {}      # Conta as tentativas seguidas para aplicar o ban de 10 min
+usuarios_bloqueados = {}  # Bloqueados permanentemente (ex: via painel do dono)
+bloqueio_temporario = {}  # Bloqueados por 10 minutos devido a spam
 chat_ativo = {"user_id": None, "timer": None}
 
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Intercepta ABSOLUTAMENTE TUDO (mensagens, mídias, botões e comandos como /ping, /suporte).
-    Se o usuário estourar o limite de 4 ações em 5 segundos, ele é banido da interação na hora
-    e o bot nunca mais responde nada para ele.
+    Controla o intervalo de 5 segundos entre mensagens/comandos e aplica o ban temporário de 10 min se spammar 6 vezes.
     """
     user = update.effective_user
     if not user:
@@ -62,32 +62,53 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     
     user_id = user.id
 
-    # O dono nunca é bloqueado por flood
+    # O dono nunca é afetado por filtros de spam ou bloqueios
     if user_id == DONO_ID:
         return
 
-    # Se já estiver na lista de bloqueados, barra o processamento imediatamente
+    agora = time.time()
+
+    # 1. Verifica se está sob o bloqueio temporário de 10 minutos
+    if user_id in bloqueio_temporario:
+        tempo_restante = bloqueio_temporario[user_id] - agora
+        if tempo_restante > 0:
+            raise ApplicationHandlerStop  # Ignora absolutamente tudo em silêncio durante os 10 min
+        else:
+            del bloqueio_temporario[user_id]
+            if user_id in contador_spam:
+                del contador_spam[user_id]
+
+    # 2. Verifica se está na lista de bloqueados permanentes
     if user_id in usuarios_bloqueados:
         raise ApplicationHandlerStop
 
-    agora = time.time()
-    if user_id not in flood_control:
-        flood_control[user_id] = []
-    
-    # Remove registros com mais de 5 segundos
-    flood_control[user_id] = [t for t in flood_control[user_id] if agora - t < 5]
-    flood_control[user_id].append(agora)
+    # 3. Regra dos 5 segundos entre cada mensagem ou comando
+    if user_id in ultimo_envio:
+        diferenca = agora - ultimo_envio[user_id]
+        if diferenca < 5.0:
+            # Mandou algo em menos de 5 segundos do envio anterior: incrementa o contador de spam
+            contador_spam[user_id] = contador_spam.get(user_id, 0) + 1
+            ultimo_envio[user_id] = agora
 
-    # Se mandar mais de 4 coisas em 5 segundos (seja /ping seguido, texto ou mídia), bloqueia de vez
-    if len(flood_control[user_id]) > 4:
-        nome = user.first_name if user.first_name else "Desconhecido"
-        username = user.username if user.username else "Sem username"
-        usuarios_bloqueados[user_id] = {
-            "nome": nome,
-            "username": username,
-            "motivo": "Flood excessivo de comandos ou mensagens em curto prazo"
-        }
-        raise ApplicationHandlerStop
+            # Se atingiu 6 tentativas seguidas em menos de 5s entre elas, bloqueia por 10 minutos
+            if contador_spam[user_id] >= 6:
+                bloqueio_temporario[user_id] = agora + 600  # 600 segundos = 10 minutos
+                contador_spam[user_id] = 0
+                try:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text="⚠️ **Você está bloqueado temporariamente por 10 minutos devido ao envio excessivo de comandos ou mensagens seguidas.**",
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
+                raise ApplicationHandlerStop
+            
+            # Se mandou antes de 5s mas ainda não chegou a 6, o bot simplesmente NÃOD RESPODE NADA
+            raise ApplicationHandlerStop
+
+    # Atualiza o registro do último envio bem-sucedido
+    ultimo_envio[user_id] = agora
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto_boas_vindas = (
@@ -110,7 +131,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒Ո 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -346,7 +367,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     user_id_atual = update.effective_user.id
 
-    if user_id_atual != DONO_ID and user_id_atual in usuarios_bloqueados:
+    if user_id_atual != DONO_ID and (user_id_atual in usuarios_bloqueados or user_id_atual in bloqueio_temporario):
         return
 
     if data.startswith("bloquear_"):
@@ -490,8 +511,7 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # REGISTRO CRUCIAL: O TypeHandler com group=-1 intercepta TUDO (incluindo comandos /ping, /suporte, etc)
-    # antes de passar pelos CommandHandlers. A exception ApplicationHandlerStop aborta o ciclo de vez.
+    # Interceptador universal com group=-1 roda antes de qualquer comando ou mensagem
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
 
     app.add_handler(CommandHandler("start", start))
@@ -505,7 +525,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot totalmente otimizado e rodando...")
+    print("SanizinhaBot totalmente ajustado com intervalo de 5s e bloqueio temporário de 10 min rodando...")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
