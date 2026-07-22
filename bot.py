@@ -32,8 +32,8 @@ TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 
-# ⚠️ COLOQUE APENAS NÚMEROS AQUI (ex: -1001234567890)
-DONO_ID = -1000000000000  # Substitua pelos números reais do ID do seu grupo
+# ID DO GRUPO PARA O QUAL O BOT VAI ENVIAR OS DADOS E RELATÓRIOS
+GRUPO_ALVO_ID = -1001234567890  # Coloque aqui o ID numérico exato do seu grupo (com o -100 na frente)
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -45,12 +45,11 @@ VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
-# CONTROLE DE ESTADOS, SPAM, BLOQUEIOS E NOTIFICAÇÕES
+# CONTROLE DE ESTADOS E SPAM
 ultimo_envio = {}          
 contador_spam = {}         
 usuarios_bloqueados = {}     
 bloqueio_temporario = {}     
-chat_ativo = {"user_id": None, "timer": None}
 pagamentos_notificados = set() 
 
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -59,10 +58,6 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
         return
     
     user_id = user.id
-
-    if user_id == abs(DONO_ID): 
-        return
-
     agora = time.time()
 
     if user_id in bloqueio_temporario:
@@ -149,18 +144,18 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
 
     msg_teste = (
-        f"🧪 **TESTE DE COMANDO RECEBIDO NO GRUPO!** 🧪\n\n"
+        f"🧪 **DADOS CAPTURADOS (COMANDO /TESTE)!** 🧪\n\n"
         f"👤 **Nome:** {nome}\n"
         f"🔗 **Username:** {username}\n"
         f"🆔 **ID do Telegram:** `{user_id}`\n\n"
-        f"✅ *O bot conseguiu capturar e enviar os dados com sucesso para este grupo!*"
+        f"✅ *O bot enviou esta mensagem diretamente para o grupo com sucesso!*"
     )
 
     await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no grupo.")
 
     try:
         await context.bot.send_message(
-            chat_id=DONO_ID,
+            chat_id=GRUPO_ALVO_ID,
             text=msg_teste,
             parse_mode="Markdown"
         )
@@ -168,25 +163,15 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Erro ao enviar teste para o grupo: {e}")
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
-        "👤 **Comandos para Membros:**\n"
+        "👤 **Comandos Disponíveis:**\n"
         "• `/start` - Inicia o bot e exibe os planos\n"
-        "• `/teste eu` - Testa o envio de dados para o grupo\n"
+        "• `/teste eu` - Testa o envio de dados direto para o grupo\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
-        "• `/ping` - Mostra a latência e o status da hospedagem\n\n"
+        "• `/ping` - Mostra a latência e o status da hospedagem\n"
     )
-
-    if user_id == abs(DONO_ID):
-        texto += (
-            "🛠 **Comandos Exclusivos do Dono:**\n"
-            "• `/falar [ID] [mensagem]` - Responde a um usuário específico\n"
-            "• `/bloqueados` - Lista os usuários bloqueados/ignorados\n"
-            "• `/desbloquear [ID, @username ou número]` - Remove o bloqueio de um usuário\n"
-        )
-
     await update.message.reply_text(texto, parse_mode="Markdown")
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -201,25 +186,13 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
 
-    if latencia < 300:
-        status_icone = "🟢"
-        status_texto = "Excelente (Normal)"
-    elif latencia < 800:
-        status_icone = "🟡"
-        status_texto = "Moderado / Instável"
-    else:
-        status_icone = "🔴"
-        status_texto = "Atenção / Alta Latência"
-
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
         f"⚡ **Latência:** `{latencia}ms`\n"
         f"⏳ **Uptime:** `{uptime_str}`\n"
         f"🧠 **Memória RAM:** `512 MB (Render Cloud Gratuito)`\n"
         f"💻 **CPU:** `Instância Compartilhada`\n"
-        f"📊 **Status:** {status_icone} {status_texto}"
     )
-
     await msg.edit_text(resposta, parse_mode="Markdown")
 
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -230,202 +203,9 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-async def fechar_suporte_por_timeout(context: ContextTypes.DEFAULT_TYPE):
-    if chat_ativo["user_id"] is not None:
-        user_id = chat_ativo["user_id"]
-        chat_ativo["user_id"] = None
-        chat_ativo["timer"] = None
-        try:
-            await context.bot.send_message(
-                chat_id=DONO_ID,
-                text="⏱ **Modo suporte encerrado automaticamente por inatividade (1 minuto sem resposta).**"
-            )
-            await context.bot.send_message(
-                chat_id=user_id,
-                text="🔒 O atendimento de suporte foi encerrado por inatividade."
-            )
-        except Exception as e:
-            print(f"Erro no timeout de suporte: {e}")
-
-async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != abs(DONO_ID):
-        return  
-
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text(
-            "⚠️ **Uso incorreto!**\n"
-            "Formato correto: `/falar ID_DO_USUARIO sua mensagem aqui`",
-            parse_mode="Markdown"
-        )
-        return
-
-    target_user_id = int(args[0])
-    mensagem_resposta = " ".join(args[1:])
-
-    chat_ativo["user_id"] = target_user_id
-
-    if chat_ativo["timer"]:
-        chat_ativo["timer"].cancel()
-
-    timer = threading.Timer(60.0, lambda: context.application.create_task(fechar_suporte_por_timeout(context)))
-    timer.start()
-    chat_ativo["timer"] = timer
-
-    try:
-        await context.bot.send_message(
-            chat_id=target_user_id,
-            text=f"🛠 **Mensagem da Administração / Suporte:**\n\n{mensagem_resposta}"
-        )
-        await update.message.reply_text(f"✅ Mensagem enviada para o usuário `{target_user_id}`!\n⏱ *Cronômetro de 1 minuto iniciado.*", parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erro ao enviar mensagem para o usuário:\n`{e}`", parse_mode="Markdown")
-
-async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != abs(DONO_ID):
-        return
-
-    if not usuarios_bloqueados:
-        await update.message.reply_text("📂 Não há usuários ignorados pelo bot no momento.")
-        return
-
-    texto = "🚫 **Lista de Usuários Ignorados (Bloqueados):**\n\n"
-    for uid, dados in usuarios_bloqueados.items():
-        texto += (
-            f"🆔 **ID:** `{uid}`\n"
-            f"👤 **Nome:** {dados['nome']}\n"
-            f"🔗 **Username:** @{dados['username']}\n"
-            f"📌 **Motivo:** {dados['motivo']}\n"
-            f"-----------------------------------\n"
-        )
-    
-    await update.message.reply_text(texto, parse_mode="Markdown")
-
-async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != abs(DONO_ID):
-        return
-
-    args = context.args
-    if not args:
-        await update.message.reply_text(
-            "⚠️ **Uso incorreto!**\n"
-            "Informe o ID, @username ou número do usuário.\n"
-            "Exemplo: `/desbloquear 123456789` ou `/desbloquear @username`",
-            parse_mode="Markdown"
-        )
-        return
-
-    alvo = args[0].strip().replace("@", "")
-    removido = False
-
-    for uid in list(usuarios_bloqueados.keys()):
-        dados = usuarios_bloqueados[uid]
-        if str(uid) == alvo or dados['username'].lower() == alvo.lower() or str(uid).endswith(alvo):
-            del usuarios_bloqueados[uid]
-            removido = True
-            await update.message.reply_text(f"✅ O bot parou de ignorar o usuário `{uid}` (`@{dados['username']}`) e voltou a responder!", parse_mode="Markdown")
-            break
-
-    if not removido:
-        await update.message.reply_text("❌ Nenhum usuário encontrado com esse ID, username ou número na lista de ignorados.")
-
-async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if user.id == abs(DONO_ID):
-        return
-
-    texto_usuario = update.effective_message.text
-    if texto_usuario and texto_usuario.strip().lower() in ["oi", "oii", "oiii", "ola", "olá"]:
-        keyboard = [
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,00 🔥", callback_data="comprar_2.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            "Oi, tudo bem? Vai assinar os seus conteúdos? 😏\n\nEscolha o seu plano abaixo:",
-            reply_markup=reply_markup
-        )
-        return
-
-    if chat_ativo["user_id"] == user.id:
-        if chat_ativo["timer"]:
-            chat_ativo["timer"].cancel()
-        timer = threading.Timer(60.0, lambda: context.application.create_task(fechar_suporte_por_timeout(context)))
-        timer.start()
-        chat_ativo["timer"] = timer
-
-    if update.effective_chat.type == "private" and DONO_ID != 0:
-        try:
-            await context.bot.forward_message(
-                chat_id=DONO_ID,
-                from_chat_id=update.effective_chat.id,
-                message_id=update.effective_message.message_id
-            )
-            
-            nome_temp = user.first_name if user.first_name else "Desconhecido"
-            username_temp = user.username if user.username else "Sem username"
-            
-            keyboard_dono = [
-                [
-                    InlineKeyboardButton("🚫 Ignorar Usuário", callback_data=f"bloquear_{user.id}"),
-                    InlineKeyboardButton("💬 Responder", callback_data=f"resp_{user.id}")
-                ]
-            ]
-            
-            await context.bot.send_message(
-                chat_id=DONO_ID,
-                text=f"⬆️ *Mensagem recebida de:* {nome_temp} (`@{username_temp}` | ID: `{user.id}`)",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(keyboard_dono)
-            )
-        except Exception as e:
-            print(f"Erro ao encaminhar mensagem: {e}")
-
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
-    user_id_atual = update.effective_user.id
-
-    if user_id_atual != abs(DONO_ID) and (user_id_atual in usuarios_bloqueados or user_id_atual in bloqueio_temporario):
-        return
-
-    if data.startswith("bloquear_"):
-        if user_id_atual != abs(DONO_ID):
-            await query.answer("❌ Apenas o dono pode usar isso!", show_alert=True)
-            return
-        
-        target_id = int(data.split("_")[1])
-        try:
-            chat_member = await context.bot.get_chat(target_id)
-            nome = chat_member.first_name or "Desconhecido"
-            username = chat_member.username or "Sem username"
-        except Exception:
-            nome = "Desconhecido"
-            username = "Sem username"
-
-        usuarios_bloqueados[target_id] = {
-            "nome": nome,
-            "username": username,
-            "motivo": "Bloqueado via botão de atalho"
-        }
-        await query.answer(f"🚫 Usuário {target_id} adicionado à lista de ignorados!", show_alert=True)
-        await query.edit_message_text(f"🚫 **Usuário `{target_id}` foi bloqueado/ignorado com sucesso.**", parse_mode="Markdown")
-        return
-
-    if data.startswith("resp_"):
-        if user_id_atual != abs(DONO_ID):
-            await query.answer("❌ Apenas o dono pode usar isso!", show_alert=True)
-            return
-        
-        target_id = int(data.split("_")[1])
-        await query.answer()
-        await query.message.reply_text(
-            f"✏️ Para responder este usuário, digite:\n`/falar {target_id} sua mensagem aqui`",
-            parse_mode="Markdown"
-        )
-        return
 
     if data.startswith("comprar_"):
         try:
@@ -531,25 +311,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     username_cliente = f"@{comprador.username}" if comprador.username else "Sem @username"
                     id_cliente = comprador.id
 
-                    relatorio_dono = (
+                    relatorio_grupo = (
                         f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
                         f"👤 **Cliente:** {nome_cliente}\n"
                         f"🔗 **Username:** {username_cliente}\n"
                         f"🆔 **ID do Telegram:** `{id_cliente}`\n"
                         f"💰 **Valor Pago:** R$ {valor_pago:.2f}\n"
                         f"📅 **Plano Escolhido:** {plano_nome}\n"
-                        f"🧾 **ID do Pix:** `{payment_id}`\n\n"
-                        f"📌 *Anote o ID/Username para remover o acesso quando o prazo de {plano_nome} vencer.*"
+                        f"🧾 **ID do Pix:** `{payment_id}`"
                     )
 
                     try:
                         await context.bot.send_message(
-                            chat_id=DONO_ID,
-                            text=relatorio_dono,
+                            chat_id=GRUPO_ALVO_ID,
+                            text=relatorio_grupo,
                             parse_mode="Markdown"
                         )
                     except Exception as e:
-                        print(f"Erro ao notificar o grupo: {e}")
+                        print(f"Erro ao enviar comprovante pro grupo: {e}")
 
             else:
                 try:
@@ -559,7 +338,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.message.reply_text(
                     "⏳ **Pagamento ainda não identificado!**\n\n"
                     "Realize o pagamento no app do seu banco via Pix Copia e Cola. "
-                    "Se você já pagou, aguarde de 5 a 10 segundos para o banco processar e clique no botão novamente.",
+                    "Se você já pagou, aguarde alguns segundos e clique no botão novamente.",
                     parse_mode="Markdown"
                 )
         else:
@@ -582,14 +361,9 @@ def main():
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
-    app.add_handler(CommandHandler("falar", falar_cmd))
-    app.add_handler(CommandHandler("bloqueados", bloqueados_cmd))
-    app.add_handler(CommandHandler("desbloquear", desbloquear_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
-    
-    print("SanizinhaBot configurado para enviar relatórios e testes direto no grupo!")
+    print("Bot rodando e configurado para enviar tudo direto no grupo!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
