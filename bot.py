@@ -30,10 +30,12 @@ def run_web():
 # CONFIGURAÇÕES DO BOT E DO MERCADO PAGO
 TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
-LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 
-# ID DO GRUPO PARA O QUAL O BOT VAI ENVIAR OS DADOS E RELATÓRIOS
-GRUPO_ALVO_ID = -1001234567890  # Coloque aqui o ID numérico exato do seu grupo (com o -100 na frente)
+# LINK DO SEU GRUPO VIP DE CLIENTES
+LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
+
+# ID NUMÉRICO DO SEU GRUPO ONDE O BOT VAI ENVIAR OS DADOS (Ex: -100xxxxxxxxxx)
+GRUPO_ALVO_ID = -1001234567890  # <-- MUDE ESTE NÚMERO PARA O ID REAL DO SEU GRUPO CLIENTES
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -109,7 +111,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔥 𝐏𝐚𝐝𝐫𝐚𝐬𝐭𝐫𝐨 𝐜𝐨𝐦𝐞𝐧𝐝𝐨 𝐍𝐨𝐯𝐢𝐧𝐡𝐚⁺¹⁸\n"
         "🔥 𝐋𝟑𝐢𝐭𝐢𝐧𝐡𝟎 𝐧𝐚 𝐛𝐨𝐜𝐚 𝐝𝐚 𝐓𝐢𝐭𝐢𝐚⁺¹⁸\n"
         "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐬𝐞 𝐞𝐱𝐢𝐛𝐢𝐧𝐝𝐨 𝐩𝐨𝐫 𝐝𝐢𝐧𝐡𝐞𝐢𝐫𝐨\n"
-        "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐩𝐨𝐛𝐫𝐞 𝐪𝐮𝐞 𝐧𝐚𝐨 𝐭𝐞𝐦 𝐟𝐫𝐞𝐬𝐜𝐮𝐫𝐚\n\n"
+        "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐩𝐨𝐛𝐫𝐞 𝙦𝙪𝙚 𝙣𝙖𝙤 𝙩𝙚𝙢 𝙛𝙧𝙚𝙨𝙘𝙪𝙧𝙖\n\n"
         "👇 Escolha o seu plano abaixo:\n\n"
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
