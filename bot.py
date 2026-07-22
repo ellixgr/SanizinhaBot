@@ -27,13 +27,14 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-# CONFIGURAÇÕES DO BOT, MERCADO PAGO E SEU ID DE ADMIN
+# CONFIGURAÇÕES DO BOT E DO MERCADO PAGO
 TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 
-# SEU ID NUMÉRICO CONFIGURADO CORRETAMENTE
-DONO_ID = 7106368383
+# ⚠️ COLOQUE AQUI O ID DO SEU GRUPO (ex: -1001234567890)
+# O bot vai mandar todas as mensagens de teste, relatórios e avisos direto para lá!
+DONO_ID = -100SEU_ID_DO_GRUPO_AQUI  # Substitua pelo número real do seu grupo com o traço (-) na frente
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -60,7 +61,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     
     user_id = user.id
 
-    if user_id == DONO_ID:
+    if user_id == abs(DONO_ID): # Se o seu usuário interagir, não aplica bloqueio de spam
         return
 
     agora = time.time()
@@ -141,7 +142,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Comando /teste eu: Captura os dados de quem enviou e manda direto no privado do Dono para testar a entrega.
+    Comando /teste eu: Captura os dados de quem enviou e manda direto no GRUPO configurado.
     """
     user = update.effective_user
     if not user:
@@ -152,17 +153,17 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
 
     msg_teste = (
-        f"🧪 **TESTE DE COMANDO RECEBIDO!** 🧪\n\n"
+        f"🧪 **TESTE DE COMANDO RECEBIDO NO GRUPO!** 🧪\n\n"
         f"👤 **Nome:** {nome}\n"
         f"🔗 **Username:** {username}\n"
         f"🆔 **ID do Telegram:** `{user_id}`\n\n"
-        f"✅ *O bot conseguiu capturar e enviar os dados com sucesso para o seu privado!*"
+        f"✅ *O bot conseguiu capturar e enviar os dados com sucesso para este grupo!*"
     )
 
-    # Responde no chat onde a pessoa mandou o comando
-    await update.message.reply_text("✅ Comando de teste executado! Os seus dados foram enviados para o privado do dono.")
+    # Confirmação simples no chat onde o comando foi digitado
+    await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no grupo.")
 
-    # Envia a notificação direto no privado do dono
+    # Envia o relatório detalhado direto no Grupo ID configurado
     try:
         await context.bot.send_message(
             chat_id=DONO_ID,
@@ -170,7 +171,7 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"Erro ao enviar teste para o dono: {e}")
+        print(f"Erro ao enviar teste para o grupo: {e}")
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -178,13 +179,13 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos para Membros:**\n"
         "• `/start` - Inicia o bot e exibe os planos\n"
-        "• `/teste eu` - Testa o envio de dados para o dono\n"
+        "• `/teste eu` - Testa o envio de dados para o grupo\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
         "• `/ping` - Mostra a latência e o status da hospedagem\n\n"
     )
 
-    if user_id == DONO_ID:
+    if user_id == abs(DONO_ID):
         texto += (
             "🛠 **Comandos Exclusivos do Dono:**\n"
             "• `/falar [ID] [mensagem]` - Responde a um usuário específico\n"
@@ -253,7 +254,7 @@ async def fechar_suporte_por_timeout(context: ContextTypes.DEFAULT_TYPE):
             print(f"Erro no timeout de suporte: {e}")
 
 async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != DONO_ID:
+    if update.effective_user.id != abs(DONO_ID):
         return  
 
     args = context.args
@@ -287,7 +288,7 @@ async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erro ao enviar mensagem para o usuário:\n`{e}`", parse_mode="Markdown")
 
 async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != DONO_ID:
+    if update.effective_user.id != abs(DONO_ID):
         return
 
     if not usuarios_bloqueados:
@@ -307,7 +308,7 @@ async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texto, parse_mode="Markdown")
 
 async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != DONO_ID:
+    if update.effective_user.id != abs(DONO_ID):
         return
 
     args = context.args
@@ -336,7 +337,7 @@ async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    if user.id == DONO_ID:
+    if user.id == abs(DONO_ID):
         return
 
     texto_usuario = update.effective_message.text
@@ -393,11 +394,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     user_id_atual = update.effective_user.id
 
-    if user_id_atual != DONO_ID and (user_id_atual in usuarios_bloqueados or user_id_atual in bloqueio_temporario):
+    if user_id_atual != abs(DONO_ID) and (user_id_atual in usuarios_bloqueados or user_id_atual in bloqueio_temporario):
         return
 
     if data.startswith("bloquear_"):
-        if user_id_atual != DONO_ID:
+        if user_id_atual != abs(DONO_ID):
             await query.answer("❌ Apenas o dono pode usar isso!", show_alert=True)
             return
         
@@ -420,7 +421,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data.startswith("resp_"):
-        if user_id_atual != DONO_ID:
+        if user_id_atual != abs(DONO_ID):
             await query.answer("❌ Apenas o dono pode usar isso!", show_alert=True)
             return
         
@@ -554,7 +555,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             parse_mode="Markdown"
                         )
                     except Exception as e:
-                        print(f"Erro ao notificar o dono: {e}")
+                        print(f"Erro ao notificar o grupo: {e}")
 
             else:
                 try:
@@ -594,7 +595,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot atualizado com o comando /teste eu integrado!")
+    print("SanizinhaBot configurado para enviar relatórios e testes direto no grupo!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
