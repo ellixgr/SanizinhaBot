@@ -38,26 +38,40 @@ VIDEOS_START = [
 
 # CONTROLE DE ESTADOS DE SUPORTE E USUÁRIOS
 user_cooldowns = {}
-user_bans = {}
+flood_control = {}
 usuarios_bloqueados = {}  
 chat_ativo = {"user_id": None, "timer": None}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    agora = time.time()
+    user = update.effective_user
+    user_id = user.id
 
-    if user_id != DONO_ID:
-        if user_id in user_bans:
-            tempo_restante = user_bans[user_id] - agora
-            if tempo_restante > 0:
-                return 
-            else:
-                del user_bans[user_id]
-
-        if user_id in user_cooldowns and (agora - user_cooldowns[user_id]) < 5:
-            user_bans[user_id] = agora + 300 
+    if user_id == DONO_ID:
+        pass
+    else:
+        if user_id in usuarios_bloqueados:
             return
-        user_cooldowns[user_id] = agora
+
+        agora = time.time()
+        
+        # Controle antiflood rigoroso para qualquer mensagem/comando
+        if user_id not in flood_control:
+            flood_control[user_id] = []
+        
+        # Limpa registros antigos (> 5 segundos)
+        flood_control[user_id] = [t for t in flood_control[user_id] if agora - t < 5]
+        flood_control[user_id].append(agora)
+
+        # Se mandar mais de 4 mensagens/comandos em 5 segundos, bloqueia direto
+        if len(flood_control[user_id]) > 4:
+            nome = user.first_name if user.first_name else "Desconhecido"
+            username = user.username if user.username else "Sem username"
+            usuarios_bloqueados[user_id] = {
+                "nome": nome,
+                "username": username,
+                "motivo": "Flood excessivo de mensagens/mídias"
+            }
+            return
 
     texto_boas_vindas = (
         "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
@@ -98,6 +112,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    if user_id != DONO_ID and user_id in usuarios_bloqueados:
+        return
     
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
@@ -119,6 +135,10 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texto, parse_mode="Markdown")
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != DONO_ID and user_id in usuarios_bloqueados:
+        return
+
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
     fim = time.time()
@@ -153,8 +173,7 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-
-    if user.id in usuarios_bloqueados:
+    if user.id != DONO_ID and user.id in usuarios_bloqueados:
         return  
 
     await update.message.reply_text(
@@ -272,6 +291,23 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
     if user.id in usuarios_bloqueados:
         return
 
+    agora = time.time()
+    if user.id not in flood_control:
+        flood_control[user.id] = []
+    
+    flood_control[user.id] = [t for t in flood_control[user.id] if agora - t < 5]
+    flood_control[user.id].append(agora)
+
+    if len(flood_control[user.id]) > 4:
+        nome = user.first_name if user.first_name else "Desconhecido"
+        username = user.username if user.username else "Sem username"
+        usuarios_bloqueados[user.id] = {
+            "nome": nome,
+            "username": username,
+            "motivo": "Flood excessivo de mensagens/mídias"
+        }
+        return
+
     texto_usuario = update.effective_message.text
     if texto_usuario and texto_usuario.strip().lower() in ["oi", "oii", "oiii", "ola", "olá"]:
         keyboard = [
@@ -324,6 +360,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     user_id_atual = update.effective_user.id
+
+    if user_id_atual != DONO_ID and user_id_atual in usuarios_bloqueados:
+        return
 
     if data.startswith("bloquear_"):
         if user_id_atual != DONO_ID:
@@ -475,7 +514,7 @@ def main():
     app.add_handler(CommandHandler("desbloquear", desbloquear_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL & ~filters.COMMAND, encaminhar_para_dono))
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
     print("SanizinhaBot totalmente otimizado e rodando...")
     app.run_polling(drop_pending_updates=False)
