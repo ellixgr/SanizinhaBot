@@ -304,7 +304,6 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
             nome_temp = user.first_name if user.first_name else "Desconhecido"
             username_temp = user.username if user.username else "Sem username"
             
-            # Botões inline para o dono ignorar ou banir o usuário direto da mensagem encaminhada
             keyboard_dono = [
                 [
                     InlineKeyboardButton("🚫 Ignorar Usuário", callback_data=f"bloquear_{user.id}"),
@@ -481,5 +480,5 @@ def main():
     print("SanizinhaBot totalmente otimizado e rodando...")
     app.run_polling(drop_pending_updates=False)
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
