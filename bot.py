@@ -35,7 +35,7 @@ MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782
 LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
 
 # ID NUMÉRICO DO SEU GRUPO ONDE O BOT VAI ENVIAR OS DADOS (Ex: -100xxxxxxxxxx)
-GRUPO_ALVO_ID = -1001234567890  # <-- MUDE ESTE NÚMERO PARA O ID REAL DO SEU GRUPO CLIENTES
+GRUPO_ALVO_ID = -1001234567890  # <-- MUDE ESTE NÚMERO DEPOIS DE USAR O COMANDO /ID NO GRUPO
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -136,6 +136,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
+async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    user = update.effective_user
+    
+    resposta = (
+        f"📊 **INFORMAÇÕES DE ID:**\n\n"
+        f"💬 **Nome do Chat:** {chat.title if chat.title else 'Privado'}\n"
+        f"🆔 **ID deste Chat/Grupo:** `{chat.id}`\n"
+        f"👤 **Seu ID de Usuário:** `{user.id}`"
+    )
+    await update.message.reply_text(resposta, parse_mode="Markdown")
+
 async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user:
@@ -169,6 +181,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
         "• `/start` - Inicia o bot e exibe os planos\n"
+        "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
         "• `/teste eu` - Testa o envio de dados direto para o grupo\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
@@ -359,13 +372,14 @@ def main():
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("teste", teste_cmd))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando e configurado para enviar tudo direto no grupo!")
+    print("Bot rodando com o comando /id integrado!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
