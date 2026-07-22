@@ -96,7 +96,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
-# COMANDO /comandos PARA LISTAR TUDO
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
@@ -120,21 +119,18 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(texto, parse_mode="Markdown")
 
-# COMANDO /ping COM LATÊNCIA, UPTIME E STATUS DE SISTEMA 🟢🟡🔴
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
     fim = time.time()
     latencia = int((fim - inicio) * 1000)
 
-    # Uptime
     uptime_segundos = int(time.time() - TEMPO_INICIAL)
     horas = uptime_segundos // 3600
     minutos = (uptime_segundos % 3600) // 60
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
 
-    # Seleção de status dinâmico por latência/estabilidade
     if latencia < 300:
         status_icone = "🟢"
         status_texto = "Excelente (Normal)"
@@ -156,7 +152,6 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await msg.edit_text(resposta, parse_mode="Markdown")
 
-# COMANDO DE SUPORTE PARA O CLIENTE
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
@@ -195,7 +190,6 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"Erro ao enviar aviso de suporte: {e}")
 
-# FUNÇÃO PARA ENCERRAR O SUPORTE POR INATIVIDADE (1 MINUTO)
 async def fechar_suporte_por_timeout(context: ContextTypes.DEFAULT_TYPE):
     if chat_ativo["user_id"] is not None:
         user_id = chat_ativo["user_id"]
@@ -213,7 +207,6 @@ async def fechar_suporte_por_timeout(context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"Erro no timeout de suporte: {e}")
 
-# COMANDO PARA O ADMIN FALAR COM O USUÁRIO
 async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return  
@@ -248,7 +241,6 @@ async def falar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Erro ao enviar mensagem para o usuário:\n`{e}`", parse_mode="Markdown")
 
-# COMANDO PARA SAIR DO MODO SUPORTE MANUALMENTE (/suportoff)
 async def suportoff_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -257,21 +249,20 @@ async def suportoff_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_ativo["timer"].cancel()
         chat_ativo["timer"] = None
 
-    if chat_ativo["user_id"] is not None:
-        target_user = chat_ativo["user_id"]
-        chat_ativo["user_id"] = None
-        await update.message.reply_text("🔴 **Modo suporte desativado com sucesso.**")
+    target_user = chat_ativo["user_id"]
+    chat_ativo["user_id"] = None
+
+    await update.message.reply_text("🔴 **Modo suporte desativado com sucesso.**")
+    
+    if target_user is not None:
         try:
             await context.bot.send_message(
                 chat_id=target_user,
-                text="🔒 O atendimento de suporte foi encerrado."
+                text="🔒 O atendimento de suporte foi encerrado pela administração."
             )
         except Exception:
             pass
-    else:
-        await update.message.reply_text("ℹ️ Não há nenhum atendimento de suporte ativo no momento.")
 
-# COMANDO PARA LISTAR USUÁRIOS BLOQUEADOS (/bloqueados)
 async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -292,7 +283,6 @@ async def bloqueados_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(texto, parse_mode="Markdown")
 
-# COMANDO PARA DESBLOQUEAR O USUÁRIO (/desbloquear)
 async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -321,7 +311,6 @@ async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not removido:
         await update.message.reply_text("❌ Nenhum usuário encontrado com esse ID ou username na lista de bloqueados.")
 
-# GERENCIADOR DE MENSAGENS NO PRIVADO
 async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
@@ -331,7 +320,6 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
     if user.id in usuarios_bloqueados:
         return
 
-    # Resposta automática para "oi" ou "oii"
     texto_usuario = update.effective_message.text
     if texto_usuario and texto_usuario.strip().lower() in ["oi", "oii", "oiii", "ola", "olá"]:
         keyboard = [
@@ -427,7 +415,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "⏳ *Após pagar, clique no botão abaixo para liberar seu acesso instantaneamente!*"
             )
 
-            # Botão de Copiar Código Pix em cima e o Verificar Pagamento logo abaixo
             keyboard_final = [
                 [InlineKeyboardButton("📋 Copiar Código Pix", url=f"https://t.me/share/url?url={qr_data}")],
                 [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]
