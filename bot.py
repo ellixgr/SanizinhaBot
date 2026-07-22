@@ -104,7 +104,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                     pass
                 raise ApplicationHandlerStop
             
-            # Se mandou antes de 5s mas ainda não chegou a 6, o bot simplesmente NÃOD RESPODE NADA
+            # Se mandou antes de 5s mas ainda não chegou a 6, o bot simplesmente não responde nada
             raise ApplicationHandlerStop
 
     # Atualiza o registro do último envio bem-sucedido
@@ -130,6 +130,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     keyboard = [
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,00 🔥", callback_data="comprar_2.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
@@ -317,6 +318,7 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
     texto_usuario = update.effective_message.text
     if texto_usuario and texto_usuario.strip().lower() in ["oi", "oii", "oiii", "ola", "olá"]:
         keyboard = [
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,00 🔥", callback_data="comprar_2.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
@@ -525,7 +527,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot totalmente ajustado com intervalo de 5s e bloqueio temporário de 10 min rodando...")
+    print("SanizinhaBot totalmente ajustado com o plano de R$ 2,00 adicionado e regras seguras rodando...")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
