@@ -4,7 +4,6 @@ import random
 import time
 import requests
 import threading
-import psutil
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -121,7 +120,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(texto, parse_mode="Markdown")
 
-# COMANDO /ping COM LATÊNCIA, UPTIME, RAM E CPU REAIS
+# COMANDO /ping COM LATÊNCIA, UPTIME E STATUS DE SISTEMA 🟢🟡🔴
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
@@ -135,31 +134,23 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
 
-    # Status de Memória RAM e CPU reais via psutil
-    ram = psutil.virtual_memory()
-    ram_usada_gb = ram.used / (1024 ** 3)
-    ram_total_gb = ram.total / (1024 ** 3)
-    ram_porcentagem = ram.percent
-
-    cpu_porcentagem = psutil.cpu_percent(interval=0.1)
-
-    # Definindo ícones baseados no consumo de CPU/RAM
-    if cpu_porcentagem > 80 or ram_porcentagem > 85:
-        status_icone = "🔴"
-        status_texto = "Alto Uso / Atenção"
-    elif cpu_porcentagem > 50 or ram_porcentagem > 60:
-        status_icone = "🟡"
-        status_texto = "Uso Moderado"
-    else:
+    # Seleção de status dinâmico por latência/estabilidade
+    if latencia < 300:
         status_icone = "🟢"
-        status_texto = "Está normal"
+        status_texto = "Excelente (Normal)"
+    elif latencia < 800:
+        status_icone = "🟡"
+        status_texto = "Moderado / Instável"
+    else:
+        status_icone = "🔴"
+        status_texto = "Atenção / Alta Latência"
 
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
         f"⚡ **Latência:** `{latencia}ms`\n"
         f"⏳ **Uptime:** `{uptime_str}`\n"
-        f"🧠 **Memória RAM:** `{ram_usada_gb:.2f} GB / {ram_total_gb:.2f} GB` ({ram_porcentagem}% usada)\n"
-        f"💻 **CPU:** `{cpu_porcentagem}%` de uso\n"
+        f"🧠 **Memória RAM:** `512 MB (Render Cloud Gratuito)`\n"
+        f"💻 **CPU:** `Instância Compartilhada`\n"
         f"📊 **Status:** {status_icone} {status_texto}"
     )
 
@@ -436,7 +427,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "⏳ *Após pagar, clique no botão abaixo para liberar seu acesso instantaneamente!*"
             )
 
-            # Botão de Copiar Código Pix (utilizando url com clipboard ou instrução visual) e o Verificar Pagamento abaixo
+            # Botão de Copiar Código Pix em cima e o Verificar Pagamento logo abaixo
             keyboard_final = [
                 [InlineKeyboardButton("📋 Copiar Código Pix", url=f"https://t.me/share/url?url={qr_data}")],
                 [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]
