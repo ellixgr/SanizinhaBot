@@ -6,7 +6,7 @@ import requests
 import threading
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler, filters, ContextTypes
 
 app_web = Flask(__name__)
 
@@ -37,42 +37,45 @@ VIDEOS_START = [
 ]
 
 # CONTROLE DE ESTADOS DE SUPORTE E USUÁRIOS
-user_cooldowns = {}
 flood_control = {}
 usuarios_bloqueados = {}  
 chat_ativo = {"user_id": None, "timer": None}
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def global_block_and_flood_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Intercepta ABSOLUTAMENTE TUDO (comandos, fotos, vídeos, textos). Se flodou, bloqueia e para."""
     user = update.effective_user
+    if not user:
+        return
+    
     user_id = user.id
 
     if user_id == DONO_ID:
-        pass
-    else:
-        if user_id in usuarios_bloqueados:
-            return
+        return
 
-        agora = time.time()
-        
-        # Controle antiflood rigoroso para qualquer mensagem/comando
-        if user_id not in flood_control:
-            flood_control[user_id] = []
-        
-        # Limpa registros antigos (> 5 segundos)
-        flood_control[user_id] = [t for t in flood_control[user_id] if agora - t < 5]
-        flood_control[user_id].append(agora)
+    # Se já está bloqueado, barra a execução completamente
+    if user_id in usuarios_bloqueados:
+        raise ApplicationHandlerStop
 
-        # Se mandar mais de 4 mensagens/comandos em 5 segundos, bloqueia direto
-        if len(flood_control[user_id]) > 4:
-            nome = user.first_name if user.first_name else "Desconhecido"
-            username = user.username if user.username else "Sem username"
-            usuarios_bloqueados[user_id] = {
-                "nome": nome,
-                "username": username,
-                "motivo": "Flood excessivo de mensagens/mídias"
-            }
-            return
+    agora = time.time()
+    if user_id not in flood_control:
+        flood_control[user_id] = []
+    
+    # Limpa registros antigos (> 5 segundos)
+    flood_control[user_id] = [t for t in flood_control[user_id] if agora - t < 5]
+    flood_control[user_id].append(agora)
 
+    # Se mandou mais de 4 mensagens/comandos/mídias em 5 segundos, bloqueia de vez
+    if len(flood_control[user_id]) > 4:
+        nome = user.first_name if user.first_name else "Desconhecido"
+        username = user.username if user.username else "Sem username"
+        usuarios_bloqueados[user_id] = {
+            "nome": nome,
+            "username": username,
+            "motivo": "Flood excessivo de mensagens, mídias ou comandos"
+        }
+        raise ApplicationHandlerStop
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto_boas_vindas = (
         "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
         "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨em 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋O 😈\n\n"
@@ -112,9 +115,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if user_id != DONO_ID and user_id in usuarios_bloqueados:
-        return
-    
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos para Membros:**\n"
@@ -135,10 +135,6 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texto, parse_mode="Markdown")
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != DONO_ID and user_id in usuarios_bloqueados:
-        return
-
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
     fim = time.time()
@@ -172,10 +168,6 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text(resposta, parse_mode="Markdown")
 
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if user.id != DONO_ID and user.id in usuarios_bloqueados:
-        return  
-
     await update.message.reply_text(
         "🛠 **Central de Suporte**\n\n"
         "Para tirar dúvidas ou resolver qualquer problema, entre em contato diretamente com o nosso suporte:\n\n"
@@ -284,28 +276,7 @@ async def desbloquear_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    
     if user.id == DONO_ID:
-        return
-
-    if user.id in usuarios_bloqueados:
-        return
-
-    agora = time.time()
-    if user.id not in flood_control:
-        flood_control[user.id] = []
-    
-    flood_control[user.id] = [t for t in flood_control[user.id] if agora - t < 5]
-    flood_control[user.id].append(agora)
-
-    if len(flood_control[user.id]) > 4:
-        nome = user.first_name if user.first_name else "Desconhecido"
-        username = user.username if user.username else "Sem username"
-        usuarios_bloqueados[user.id] = {
-            "nome": nome,
-            "username": username,
-            "motivo": "Flood excessivo de mensagens/mídias"
-        }
         return
 
     texto_usuario = update.effective_message.text
@@ -505,6 +476,9 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
+    # TYPEHANDLER GLOBAL: Intercepta QUALQUER coisa que venha do Telegram antes de comandos ou mensagens
+    app.add_handler(TypeHandler(Update, global_block_and_flood_filter), group=-1)
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
