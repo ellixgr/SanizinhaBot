@@ -45,54 +45,46 @@ VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
 ]
 
-# CONTROLE DE ESTADOS, SPAM E BLOQUEIOS TEMPORÁRIOS/PERMANENTES
-ultimo_envio = {}       # Controla o intervalo de 5 segundos entre uma msg/comando e outra
-contador_spam = {}      # Conta as tentativas seguidas para aplicar o ban de 10 min
-usuarios_bloqueados = {}  # Bloqueados permanentemente (ex: via painel do dono)
-bloqueio_temporario = {}  # Bloqueados por 10 minutos devido a spam
+# CONTROLE DE ESTADOS, SPAM, BLOQUEIOS E NOTIFICAÇÕES
+ultimo_envio = {}          
+contador_spam = {}         
+usuarios_bloqueados = {}     
+bloqueio_temporario = {}     
 chat_ativo = {"user_id": None, "timer": None}
+pagamentos_notificados = set() 
 
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Controla o intervalo de 5 segundos entre mensagens/comandos e aplica o ban temporário de 10 min se spammar 6 vezes.
-    """
     user = update.effective_user
     if not user:
         return
     
     user_id = user.id
 
-    # O dono nunca é afetado por filtros de spam ou bloqueios
     if user_id == DONO_ID:
         return
 
     agora = time.time()
 
-    # 1. Verifica se está sob o bloqueio temporário de 10 minutos
     if user_id in bloqueio_temporario:
         tempo_restante = bloqueio_temporario[user_id] - agora
         if tempo_restante > 0:
-            raise ApplicationHandlerStop  # Ignora absolutamente tudo em silêncio durante os 10 min
+            raise ApplicationHandlerStop  
         else:
             del bloqueio_temporario[user_id]
             if user_id in contador_spam:
                 del contador_spam[user_id]
 
-    # 2. Verifica se está na lista de bloqueados permanentes
     if user_id in usuarios_bloqueados:
         raise ApplicationHandlerStop
 
-    # 3. Regra dos 5 segundos entre cada mensagem ou comando
     if user_id in ultimo_envio:
         diferenca = agora - ultimo_envio[user_id]
         if diferenca < 5.0:
-            # Mandou algo em menos de 5 segundos do envio anterior: incrementa o contador de spam
             contador_spam[user_id] = contador_spam.get(user_id, 0) + 1
             ultimo_envio[user_id] = agora
 
-            # Se atingiu 6 tentativas seguidas em menos de 5s entre elas, bloqueia por 10 minutos
             if contador_spam[user_id] >= 6:
-                bloqueio_temporario[user_id] = agora + 600  # 600 segundos = 10 minutos
+                bloqueio_temporario[user_id] = agora + 600  
                 contador_spam[user_id] = 0
                 try:
                     await context.bot.send_message(
@@ -104,10 +96,8 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                     pass
                 raise ApplicationHandlerStop
             
-            # Se mandou antes de 5s mas ainda não chegou a 6, o bot simplesmente não responde nada
             raise ApplicationHandlerStop
 
-    # Atualiza o registro do último envio bem-sucedido
     ultimo_envio[user_id] = agora
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -149,12 +139,46 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
+async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Comando /teste eu: Captura os dados de quem enviou e manda direto no privado do Dono para testar a entrega.
+    """
+    user = update.effective_user
+    if not user:
+        return
+
+    nome = user.first_name if user.first_name else "Sem nome"
+    username = f"@{user.username}" if user.username else "Sem @username"
+    user_id = user.id
+
+    msg_teste = (
+        f"🧪 **TESTE DE COMANDO RECEBIDO!** 🧪\n\n"
+        f"👤 **Nome:** {nome}\n"
+        f"🔗 **Username:** {username}\n"
+        f"🆔 **ID do Telegram:** `{user_id}`\n\n"
+        f"✅ *O bot conseguiu capturar e enviar os dados com sucesso para o seu privado!*"
+    )
+
+    # Responde no chat onde a pessoa mandou o comando
+    await update.message.reply_text("✅ Comando de teste executado! Os seus dados foram enviados para o privado do dono.")
+
+    # Envia a notificação direto no privado do dono
+    try:
+        await context.bot.send_message(
+            chat_id=DONO_ID,
+            text=msg_teste,
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        print(f"Erro ao enviar teste para o dono: {e}")
+
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos para Membros:**\n"
         "• `/start` - Inicia o bot e exibe os planos\n"
+        "• `/teste eu` - Testa o envio de dados para o dono\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
         "• `/ping` - Mostra a latência e o status da hospedagem\n\n"
@@ -485,10 +509,53 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
                 except Exception:
                     pass
+                
                 await query.message.reply_text(
                     f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
                     f"Muito obrigado pela compra! Aqui está o seu link de acesso exclusivo:\n{LINK_DO_GRUPO}"
                 )
+
+                if payment_id not in pagamentos_notificados:
+                    pagamentos_notificados.add(payment_id)
+
+                    valor_pago = float(resp_data.get("transaction_amount", 0.0))
+                    
+                    if valor_pago == 2.0:
+                        plano_nome = "1 Dia 🔥"
+                    elif valor_pago == 7.0:
+                        plano_nome = "1 Semana"
+                    elif valor_pago == 20.0:
+                        plano_nome = "1 Mês"
+                    elif valor_pago == 60.0:
+                        plano_nome = "Permanente"
+                    else:
+                        plano_nome = f"R$ {valor_pago:.2f}"
+
+                    comprador = update.effective_user
+                    nome_cliente = comprador.first_name if comprador.first_name else "Sem nome"
+                    username_cliente = f"@{comprador.username}" if comprador.username else "Sem @username"
+                    id_cliente = comprador.id
+
+                    relatorio_dono = (
+                        f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
+                        f"👤 **Cliente:** {nome_cliente}\n"
+                        f"🔗 **Username:** {username_cliente}\n"
+                        f"🆔 **ID do Telegram:** `{id_cliente}`\n"
+                        f"💰 **Valor Pago:** R$ {valor_pago:.2f}\n"
+                        f"📅 **Plano Escolhido:** {plano_nome}\n"
+                        f"🧾 **ID do Pix:** `{payment_id}`\n\n"
+                        f"📌 *Anote o ID/Username para remover o acesso quando o prazo de {plano_nome} vencer.*"
+                    )
+
+                    try:
+                        await context.bot.send_message(
+                            chat_id=DONO_ID,
+                            text=relatorio_dono,
+                            parse_mode="Markdown"
+                        )
+                    except Exception as e:
+                        print(f"Erro ao notificar o dono: {e}")
+
             else:
                 try:
                     await query.answer("❌ Pagamento ainda não identificado!", show_alert=True)
@@ -513,10 +580,10 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # Interceptador universal com group=-1 roda antes de qualquer comando ou mensagem
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("teste", teste_cmd))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
@@ -527,7 +594,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, encaminhar_para_dono))
     
-    print("SanizinhaBot totalmente ajustado com o plano de R$ 2,00 adicionado e regras seguras rodando...")
+    print("SanizinhaBot atualizado com o comando /teste eu integrado!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
