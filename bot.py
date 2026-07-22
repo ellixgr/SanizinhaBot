@@ -32,7 +32,7 @@ TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 
 # LINK DO SEU GRUPO VIP DE CLIENTES
-LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
+LINK_DO_GRUPO = "[https://t.me/+LCsNZuCgCWxiYzNh](https://t.me/+LCsNZuCgCWxiYzNh)"
 
 # SEU ID PESSOAL DO TELEGRAM (DESTINO DAS NOTIFICAÇÕES)
 GRUPO_ALVO_ID = 7711945457
@@ -42,9 +42,9 @@ TEMPO_INICIAL = time.time()
 
 # LISTA DE VÍDEOS PARA ENVIO ALEATÓRIO NO START
 VIDEOS_START = [
-    "https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4",
-    "https://ellixgr.github.io/x23wzp/1783749549965.mp4",
-    "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
+    "[https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4](https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4)",
+    "[https://ellixgr.github.io/x23wzp/1783749549965.mp4](https://ellixgr.github.io/x23wzp/1783749549965.mp4)",
+    "[https://ellixgr.github.io/x23wzp/1783749723785.mp4](https://ellixgr.github.io/x23wzp/1783749723785.mp4)"
 ]
 
 # CONTROLE DE ESTADOS E SPAM
@@ -242,7 +242,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         nome = user.first_name if user.first_name else "Cliente"
         sobrenome = user.last_name if user.last_name else "Telegram"
 
-        url = "https://api.mercadopago.com/v1/payments"
+        url = "[https://api.mercadopago.com/v1/payments](https://api.mercadopago.com/v1/payments)"
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
             "Content-Type": "application/json",
@@ -270,7 +270,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✅ **PIX Gerado com Sucesso!**\n\n"
                 f"💰 **Valor:** R$ {valor:.2f}\n\n"
                 "📋 **Código Pix Copia e Cola:**\n"
-                f"`{qr_data}`\n\n"
+                f"```\n{qr_data}\n```\n"
                 "💡 *Basta tocar em cima do código acima para copiar automaticamente.*"
             )
 
@@ -286,7 +286,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("check_"):
         payment_id = data.split("_")[1]
         
-        url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
+        url = f"[https://api.mercadopago.com/v1/payments/](https://api.mercadopago.com/v1/payments/){payment_id}"
         headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
         
         response = requests.get(url, headers=headers)
@@ -311,20 +311,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     valor_pago = float(resp_data.get("transaction_amount", 0.0))
                     
                     if valor_pago == 2.0:
-                        plano_nome = "1 Dia 🔥"
+                        plano_nome = "1 Dia 🔥 (R$ 2,00)"
                     elif valor_pago == 7.0:
-                        plano_nome = "1 Semana"
+                        plano_nome = "1 Semana (R$ 7,00)"
                     elif valor_pago == 20.0:
-                        plano_nome = "1 Mês"
+                        plano_nome = "1 Mês (R$ 20,00)"
                     elif valor_pago == 60.0:
-                        plano_nome = "Permanente"
+                        plano_nome = "Permanente (R$ 60,00)"
                     else:
-                        plano_nome = f"R$ {valor_pago:.2f}"
+                        plano_nome = f"Personalizado (R$ {valor_pago:.2f})"
 
                     comprador = update.effective_user
                     nome_cliente = comprador.first_name if comprador.first_name else "Sem nome"
                     username_cliente = f"@{comprador.username}" if comprador.username else "Sem @username"
                     id_cliente = comprador.id
+                    data_pagamento = time.strftime('%d/%m/%Y às %H:%M:%S', time.localtime())
 
                     relatorio_privado = (
                         f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
@@ -333,7 +334,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"🆔 **ID do Telegram:** `{id_cliente}`\n"
                         f"💰 **Valor Pago:** R$ {valor_pago:.2f}\n"
                         f"📅 **Plano Escolhido:** {plano_nome}\n"
-                        f"🧾 **ID do Pix:** `{payment_id}`"
+                        f"⏰ **Data/Hora:** {data_pagamento}\n"
+                        f"🧾 **ID do Pix (Mercado Pago):** `{payment_id}`\n"
+                        f"🟢 **Status:** Aprovado"
                     )
 
                     try:
@@ -379,7 +382,7 @@ def main():
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando com o seu ID pessoal configurado!")
+    print("Bot rodando perfeitamente e enviando dados completos no seu privado!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
