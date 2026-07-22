@@ -32,9 +32,8 @@ TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 LINK_DO_GRUPO = "https://t.me/+ZWUMQ-KbutpkY2Yx"
 
-# ⚠️ COLOQUE AQUI O ID DO SEU GRUPO (ex: -1001234567890)
-# O bot vai mandar todas as mensagens de teste, relatórios e avisos direto para lá!
-DONO_ID = -100SEU_ID_DO_GRUPO_AQUI  # Substitua pelo número real do seu grupo com o traço (-) na frente
+# ⚠️ COLOQUE APENAS NÚMEROS AQUI (ex: -1001234567890)
+DONO_ID = -1000000000000  # Substitua pelos números reais do ID do seu grupo
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -61,7 +60,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     
     user_id = user.id
 
-    if user_id == abs(DONO_ID): # Se o seu usuário interagir, não aplica bloqueio de spam
+    if user_id == abs(DONO_ID): 
         return
 
     agora = time.time()
@@ -141,9 +140,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Comando /teste eu: Captura os dados de quem enviou e manda direto no GRUPO configurado.
-    """
     user = update.effective_user
     if not user:
         return
@@ -160,10 +156,8 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ *O bot conseguiu capturar e enviar os dados com sucesso para este grupo!*"
     )
 
-    # Confirmação simples no chat onde o comando foi digitado
     await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no grupo.")
 
-    # Envia o relatório detalhado direto no Grupo ID configurado
     try:
         await context.bot.send_message(
             chat_id=DONO_ID,
