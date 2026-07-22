@@ -34,8 +34,8 @@ MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782
 # LINK DO SEU GRUPO VIP DE CLIENTES
 LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
 
-# ID NUMÉRICO DO SEU GRUPO ONDE O BOT VAI ENVIAR OS DADOS (Ex: -100xxxxxxxxxx)
-GRUPO_ALVO_ID = -1001234567890  # <-- MUDE ESTE NÚMERO DEPOIS DE USAR O COMANDO /ID NO GRUPO
+# ID NUMÉRICO DO GRUPO CONFIGURADO COM SUCESSO!
+GRUPO_ALVO_ID = -1003989036938
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -379,7 +379,7 @@ def main():
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando com o comando /id integrado!")
+    print("Bot rodando com o ID do grupo configurado!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
