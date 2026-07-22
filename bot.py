@@ -4,6 +4,7 @@ import random
 import time
 import requests
 import threading
+import psutil
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -80,7 +81,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -120,7 +121,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(texto, parse_mode="Markdown")
 
-# COMANDO /ping COM LATÊNCIA E UPTIME (SEM DEPENDÊNCIAS EXTERNAS)
+# COMANDO /ping COM LATÊNCIA, UPTIME, RAM E CPU REAIS
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
@@ -134,12 +135,32 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     segundos = uptime_segundos % 60
     uptime_str = f"{horas}h {minutos}m {segundos}s"
 
+    # Status de Memória RAM e CPU reais via psutil
+    ram = psutil.virtual_memory()
+    ram_usada_gb = ram.used / (1024 ** 3)
+    ram_total_gb = ram.total / (1024 ** 3)
+    ram_porcentagem = ram.percent
+
+    cpu_porcentagem = psutil.cpu_percent(interval=0.1)
+
+    # Definindo ícones baseados no consumo de CPU/RAM
+    if cpu_porcentagem > 80 or ram_porcentagem > 85:
+        status_icone = "🔴"
+        status_texto = "Alto Uso / Atenção"
+    elif cpu_porcentagem > 50 or ram_porcentagem > 60:
+        status_icone = "🟡"
+        status_texto = "Uso Moderado"
+    else:
+        status_icone = "🟢"
+        status_texto = "Está normal"
+
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
         f"⚡ **Latência:** `{latencia}ms`\n"
         f"⏳ **Uptime:** `{uptime_str}`\n"
-        f"🧠 **Memória RAM:** `Estável (Render Cloud)`\n"
-        f"📊 **Status:** 🟢 Está normal"
+        f"🧠 **Memória RAM:** `{ram_usada_gb:.2f} GB / {ram_total_gb:.2f} GB` ({ram_porcentagem}% usada)\n"
+        f"💻 **CPU:** `{cpu_porcentagem}%` de uso\n"
+        f"📊 **Status:** {status_icone} {status_texto}"
     )
 
     await msg.edit_text(resposta, parse_mode="Markdown")
@@ -325,7 +346,7 @@ async def encaminhar_para_dono(update: Update, context: ContextTypes.DEFAULT_TYP
         keyboard = [
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀𝗡𝗘𝗡𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
@@ -415,7 +436,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "⏳ *Após pagar, clique no botão abaixo para liberar seu acesso instantaneamente!*"
             )
 
+            # Botão de Copiar Código Pix (utilizando url com clipboard ou instrução visual) e o Verificar Pagamento abaixo
             keyboard_final = [
+                [InlineKeyboardButton("📋 Copiar Código Pix", url=f"https://t.me/share/url?url={qr_data}")],
                 [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]
             ]
 
