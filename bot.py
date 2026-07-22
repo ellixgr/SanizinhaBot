@@ -16,6 +16,7 @@ from telegram.ext import (
     ContextTypes,
     ApplicationHandlerStop
 )
+
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -123,10 +124,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception:
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
+
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
-       resposta = (
+    resposta = (
         f"📊 **INFORMAÇÕES DE ID:**\n\n"
         f"💬 **Nome do Chat:** {chat.title if chat.title else 'Privado'}\n"
         f"🆔 **ID deste Chat/Grupo:** `{chat.id}`\n"
@@ -261,6 +263,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             erro_mp = response.text[:300]
             await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n`{erro_mp}`", parse_mode="Markdown")
+            
     elif data.startswith("check_"):
         payment_id = data.split("_")[1]       
         url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
