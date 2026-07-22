@@ -34,8 +34,8 @@ MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782
 # LINK DO SEU GRUPO VIP DE CLIENTES
 LINK_DO_GRUPO = "https://t.me/+LCsNZuCgCWxiYzNh"
 
-# ID NUMÉRICO DO GRUPO CONFIGURADO COM SUCESSO!
-GRUPO_ALVO_ID = -1003989036938
+# SEU ID PESSOAL DO TELEGRAM (DESTINO DAS NOTIFICAÇÕES)
+GRUPO_ALVO_ID = 7711945457
 
 # TEMPO DE INÍCIO DO BOT (PARA CALCULO DE UPTIME)
 TEMPO_INICIAL = time.time()
@@ -162,10 +162,10 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 **Nome:** {nome}\n"
         f"🔗 **Username:** {username}\n"
         f"🆔 **ID do Telegram:** `{user_id}`\n\n"
-        f"✅ *O bot enviou esta mensagem diretamente para o grupo com sucesso!*"
+        f"✅ *O bot enviou esta mensagem diretamente para o seu privado com sucesso!*"
     )
 
-    await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no grupo.")
+    await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no seu privado.")
 
     try:
         await context.bot.send_message(
@@ -174,7 +174,7 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"Erro ao enviar teste para o grupo: {e}")
+        print(f"Erro ao enviar teste para o seu ID: {e}")
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
@@ -182,7 +182,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👤 **Comandos Disponíveis:**\n"
         "• `/start` - Inicia o bot e exibe os planos\n"
         "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
-        "• `/teste eu` - Testa o envio de dados direto para o grupo\n"
+        "• `/teste eu` - Testa o envio de dados direto para o seu privado\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
         "• `/ping` - Mostra a latência e o status da hospedagem\n"
@@ -326,7 +326,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     username_cliente = f"@{comprador.username}" if comprador.username else "Sem @username"
                     id_cliente = comprador.id
 
-                    relatorio_grupo = (
+                    relatorio_privado = (
                         f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
                         f"👤 **Cliente:** {nome_cliente}\n"
                         f"🔗 **Username:** {username_cliente}\n"
@@ -339,11 +339,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     try:
                         await context.bot.send_message(
                             chat_id=GRUPO_ALVO_ID,
-                            text=relatorio_grupo,
+                            text=relatorio_privado,
                             parse_mode="Markdown"
                         )
                     except Exception as e:
-                        print(f"Erro ao enviar comprovante pro grupo: {e}")
+                        print(f"Erro ao enviar comprovante pro seu privado: {e}")
 
             else:
                 try:
@@ -379,7 +379,7 @@ def main():
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Bot rodando com o ID do grupo configurado!")
+    print("Bot rodando com o seu ID pessoal configurado!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
