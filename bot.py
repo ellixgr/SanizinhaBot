@@ -6,7 +6,16 @@ import requests
 import threading
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler, filters, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder, 
+    CommandHandler, 
+    CallbackQueryHandler, 
+    MessageHandler, 
+    TypeHandler, 
+    filters, 
+    ContextTypes,
+    ApplicationHandlerStop
+)
 
 app_web = Flask(__name__)
 
@@ -41,18 +50,23 @@ flood_control = {}
 usuarios_bloqueados = {}  
 chat_ativo = {"user_id": None, "timer": None}
 
-async def global_block_and_flood_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Intercepta ABSOLUTAMENTE TUDO (comandos, fotos, vídeos, textos). Se flodou, bloqueia e para."""
+async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Intercepta ABSOLUTAMENTE TUDO (mensagens, mídias, botões e comandos como /ping, /suporte).
+    Se o usuário estourar o limite de 4 ações em 5 segundos, ele é banido da interação na hora
+    e o bot nunca mais responde nada para ele.
+    """
     user = update.effective_user
     if not user:
         return
     
     user_id = user.id
 
+    # O dono nunca é bloqueado por flood
     if user_id == DONO_ID:
         return
 
-    # Se já está bloqueado, barra a execução completamente
+    # Se já estiver na lista de bloqueados, barra o processamento imediatamente
     if user_id in usuarios_bloqueados:
         raise ApplicationHandlerStop
 
@@ -60,18 +74,18 @@ async def global_block_and_flood_filter(update: Update, context: ContextTypes.DE
     if user_id not in flood_control:
         flood_control[user_id] = []
     
-    # Limpa registros antigos (> 5 segundos)
+    # Remove registros com mais de 5 segundos
     flood_control[user_id] = [t for t in flood_control[user_id] if agora - t < 5]
     flood_control[user_id].append(agora)
 
-    # Se mandou mais de 4 mensagens/comandos/mídias em 5 segundos, bloqueia de vez
+    # Se mandar mais de 4 coisas em 5 segundos (seja /ping seguido, texto ou mídia), bloqueia de vez
     if len(flood_control[user_id]) > 4:
         nome = user.first_name if user.first_name else "Desconhecido"
         username = user.username if user.username else "Sem username"
         usuarios_bloqueados[user_id] = {
             "nome": nome,
             "username": username,
-            "motivo": "Flood excessivo de mensagens, mídias ou comandos"
+            "motivo": "Flood excessivo de comandos ou mensagens em curto prazo"
         }
         raise ApplicationHandlerStop
 
@@ -96,7 +110,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒Ո 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -476,8 +490,9 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # TYPEHANDLER GLOBAL: Intercepta QUALQUER coisa que venha do Telegram antes de comandos ou mensagens
-    app.add_handler(TypeHandler(Update, global_block_and_flood_filter), group=-1)
+    # REGISTRO CRUCIAL: O TypeHandler com group=-1 intercepta TUDO (incluindo comandos /ping, /suporte, etc)
+    # antes de passar pelos CommandHandlers. A exception ApplicationHandlerStop aborta o ciclo de vez.
+    app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
