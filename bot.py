@@ -28,20 +28,15 @@ def run_web():
     app_web.run(host="0.0.0.0", port=port)
 
 # CONFIGURAÇÕES DO BOT E DO MERCADO PAGO
-TELEGRAM_TOKEN = "8634433708:AAGH67_iFaiMDHHPOVBQUx_GpxOlM-Lu97c"
+TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
 MP_ACCESS_TOKEN = "APP_USR-4578357640781383-101515-089e854df4cde17d09a4e28316782210-2028678149"
 
 LINK_DO_GRUPO = "https://t.me/+ZeYMNaaCZsdhZjMx"
-
 GRUPO_ALVO_ID = 7711945457
-
 TEMPO_INICIAL = time.time()
 
-VIDEOS_START = [
-    "https://ellixgr.github.io/x23wzp/VID_20260713_133754_437.mp4",
-    "https://ellixgr.github.io/x23wzp/1783749549965.mp4",
-    "https://ellixgr.github.io/x23wzp/1783749723785.mp4"
-]
+# FOTO ÚNICA CONFIGURADA
+FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
 
 # 𝐄𝐒𝐓𝐀𝐃𝐎𝐒 𝐄 𝐒𝐏𝐀𝐌
 ultimo_envio = {}          
@@ -77,7 +72,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                 try:
                     await context.bot.send_message(
                         chat_id=update.effective_chat.id,
-                        text="⚠️ **Você está bloqueado temporariamente por 10 minutos devido ao envio excessivo de comandos ou mensagens seguidas.**",
+                        text="⚠️ **Você está bloqueado temporariamente por 10 minutos devido ao envio excessivo de mensagens.**",
                         parse_mode="Markdown"
                     )
                 except Exception:
@@ -88,20 +83,12 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto_boas_vindas = (
-        "🔥 𝗦𝗘𝗝𝗔 𝗕𝗘𝗠-𝗩𝗜𝗡𝗗𝗢 𝗔𝗢 𝗨𝗡𝗜𝗩𝗘𝗥𝗦𝗢 𝗗𝗔𝗦 𝗙𝗔𝗩𝗘𝗟𝗔𝗗𝗜𝗡𝗛𝗔𝗦 𝗚𝗢𝗦𝗧𝗢𝗦𝗔𝗦 🇧🇷\n\n"
-        "🇧🇷 𝙁𝙖𝙫𝙚𝙡𝙖𝙙𝙞𝙣𝙝𝙖𝙨, 𝙙𝙚𝙨𝙚𝙨𝙥𝙚𝙧𝙖𝙙𝙖𝙨, 𝙣𝙞𝙣𝙛𝙚𝙩𝙖𝙨 𝙙𝙖 𝙘𝙖𝙨𝙖 𝙨em 𝙧𝙚𝙗𝙤𝙘𝙤, 𝙢𝙖𝙜𝙧𝙞𝙣𝙝𝙖𝙨 𝙥𝙚𝙞𝙩𝙪𝙙𝙖𝙨, 𝙩𝙪𝙙𝙤 𝙚𝙢 1 𝙂𝙍𝙐𝙋O 😈\n\n"
-        "🥵 Aqui é só material BRUTO e sem censura:\n\n"
-        "🔥 +130 mil mídias (videos e fotos)\n\n"
-        "🔥 𝐏𝐨𝐛𝐫𝐢𝐧𝐡𝐚𝐬 𝐭𝐚𝐫𝐚𝐝𝐚𝐬 𝐪𝐮𝐞 𝐧ã𝐨 𝐭𝐞𝐦 𝐥𝐢𝐦𝐢𝐭𝐞\n"
-        "🔥 𝐄𝐬𝐩𝐨𝐬𝐚𝐬 𝐭𝐫𝐚𝐢𝐧𝐝𝐨 𝐨 𝐦𝐚𝐫𝐢𝐝𝐨 𝐬𝐨 𝐩𝐞𝐥𝐚 𝐞𝐦𝐨çã𝐨\n"
-        "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐝𝐚 𝐩𝐞𝐫𝐢𝐟𝐞𝐫𝐢𝐚 𝐪𝐮𝐞 𝐚𝐝𝐨𝐫𝐚𝐦 𝐮𝐦𝐚 𝐬𝐚𝐜𝐚𝐧𝐚𝐠𝐞𝐦 𝐧𝐨 𝐬𝐢𝐠𝐢𝐥𝐨\n"
-        "🔥 𝐆𝐨𝐬𝐭𝐨𝐬𝐚𝐬 𝐝𝐨 𝐛𝐚𝐫𝐫𝐚𝐜𝐨 𝐟𝐚𝐳𝐞𝐧𝐝𝐨 𝐭𝐮𝐝𝐨 𝐩𝐨𝐫 𝐝𝐢𝐯𝐞𝐫𝐬ã𝐨\n"
-        "🔥 𝐍𝐢𝐧𝐟𝐞𝐭𝐚𝐬 𝐜𝐨𝐦 𝐦𝐚𝐫𝐪𝐮𝐢𝐧𝐡𝐚 𝐝𝐞 𝐟𝐢𝐭𝐚\n"
-        "🔥 𝐏𝐚𝐝𝐫𝐚𝐬𝐭𝐫𝐨 𝐜𝐨𝐦𝐞𝐧𝐝𝐨 𝐍𝐨𝐯𝐢𝐧𝐡𝐚⁺¹⁸\n"
-        "🔥 𝐋𝟑𝐢𝐭𝐢𝐧𝐡𝟎 𝐧𝐚 𝐛𝐨𝐜𝐚 𝐝𝐚 𝐓𝐢𝐭𝐢𝐚⁺¹⁸\n"
-        "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐬𝐞 𝐞𝐱𝐢𝐛𝐢𝐧𝐝𝐨 𝐩𝐨𝐫 𝐝𝐢𝐧𝐡𝐞𝐢𝐫𝐨\n"
-        "🔥 𝐍𝐨𝐯𝐢𝐧𝐡𝐚𝐬⁺¹⁸ 𝐩𝐨𝐛𝐫𝐞 𝙦𝙪𝙚 𝙣𝙖𝙤 𝙩𝙚𝙢 𝙛𝙧𝙚𝙨𝙘𝙪𝙧𝙖\n\n"
-        "👇 Escolha o seu plano abaixo:\n\n"
+        "🔥 **SEJA BEM-VINDO AO CANAL EXCLUSIVO** 🇧🇷\n\n"
+        "✨ Tenha acesso completo a todo o nosso conteúdo diário atualizado em um só lugar:\n\n"
+        "📁 +130 mil mídias disponíveis (vídeos e fotos)\n"
+        "🚀 Atualizações diárias sem censura\n"
+        "💎 Material organizado e exclusivo\n\n"
+        "👇 Escolha o seu plano abaixo para liberar o seu acesso:\n\n"
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
 
@@ -113,11 +100,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    video_escolhido = random.choice(VIDEOS_START)
-
     try:
-        await update.message.reply_video(
-            video=video_escolhido,
+        await update.message.reply_photo(
+            photo=FOTO_START,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
             parse_mode="Markdown"
@@ -165,7 +150,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
-        "• `/start` - Inicia o bot e exibe os planos (com os vídeos aleatórios)\n"
+        "• `/start` - Inicia o bot e exibe os planos\n"
         "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
         "• `/teste eu` - Testa o envio de dados direto para o seu privado\n"
         "• `/suport` ou `/suporte` - Mostra o contato do suporte\n"
