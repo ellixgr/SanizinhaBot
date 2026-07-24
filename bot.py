@@ -230,29 +230,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"📋 **Código Pix Copia e Cola:**\n`{qr_data}`"
             )
             
-            # Criando arquivo .txt com o código pix para facilitar a cópia em qualquer dispositivo
-            file_path = f"pix_{payment_id}.txt"
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(qr_data)
-                
             keyboard_final = [
+                [InlineKeyboardButton("📋 Copiar Código Pix", copy_text=dict(text=qr_data))],
                 [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{payment_id}")]
             ]
             
-            try:
-                with open(file_path, "rb") as doc:
-                    await query.message.reply_document(
-                        document=doc,
-                        filename="codigo_pix.txt",
-                        caption=msg_completa,
-                        parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup(keyboard_final)
-                    )
-            except Exception:
-                await query.message.reply_text(msg_completa, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard_final))
-            finally:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
+            await query.message.reply_text(
+                msg_completa,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(keyboard_final)
+            )
         else:
             await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n`{response.text[:300]}`", parse_mode="Markdown")
             
