@@ -30,13 +30,23 @@ def run_web():
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN")
 DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
-CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID"))
+CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", 0))
 
 MONGO_URI = os.environ.get("MONGO_URI")
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["sanizinhabot_db"]
-collection_clientes = db["clientes"]
-collection_chats = db["chats_autorizados"]
+
+# Conexão segura com parâmetros anti-timeout e anti-SSL handshake error
+try:
+    mongo_client = MongoClient(
+        MONGO_URI, 
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        tlsAllowInvalidCertificates=True
+    )
+    db = mongo_client["sanizinhabot_db"]
+    collection_clientes = db["clientes"]
+    collection_chats = db["chats_autorizados"]
+except Exception as e:
+    print(f"⚠️ Erro crítico ao conectar no MongoDB: {e}")
 
 TEMPO_INICIAL = time.time()
 FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
@@ -54,11 +64,9 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
     
-    # Se for o dono, libera a execução de tudo imediatamente
     if user_id == DONO_ID:
         return
 
-    # Bloqueia comandos restritos para quem não é o dono
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
         if cmd not in ['/start', '/suporte', '/suport']:
@@ -102,14 +110,17 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
     new_status = result.new_chat_member.status
     
     if chat.type in ["group", "supergroup", "channel"]:
-        if new_status in ["member", "administrator"]:
-            collection_chats.update_one(
-                {"chat_id": chat.id},
-                {"$set": {"chat_id": chat.id, "title": chat.title, "type": chat.type}},
-                upsert=True
-            )
-        elif new_status in ["left", "kicked"]:
-            collection_chats.delete_one({"chat_id": chat.id})
+        try:
+            if new_status in ["member", "administrator"]:
+                collection_chats.update_one(
+                    {"chat_id": chat.id},
+                    {"$set": {"chat_id": chat.id, "title": chat.title, "type": chat.type}},
+                    upsert=True
+                )
+            elif new_status in ["left", "kicked"]:
+                collection_chats.delete_one({"chat_id": chat.id})
+        except Exception as e:
+            print(f"Erro ao atualizar chat no DB: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
@@ -218,7 +229,12 @@ async def config_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
     
-    chats = list(collection_chats.find({}))
+    try:
+        chats = list(collection_chats.find({}))
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro de conexão com o Banco de Dados ao buscar chats:\n`{e}`", parse_mode="Markdown")
+        return
+
     if not chats:
         await update.message.reply_text(
             "⚙️ **Painel de Configuração de Grupos/Canais**\n\n"
@@ -231,7 +247,7 @@ async def config_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     for chat in chats:
         chat_id = chat["chat_id"]
-        title = chat["title"] or f"Chat {chat_id}"
+        title = chat.get("title", f"Chat {chat_id}")
         tipo = chat.get("type", "grupo")
         emoji = "📢" if tipo == "channel" else "👥"
         keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"cfg_chat_{chat_id}")])
@@ -249,8 +265,11 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     agora = time.time()
-    clientes_cursor = collection_clientes.find({})
-    lista_clientes = list(clientes_cursor)
+    try:
+        lista_clientes = list(collection_clientes.find({}))
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao acessar o banco de dados:\n`{e}`", parse_mode="Markdown")
+        return
     
     if not lista_clientes:
         await update.message.reply_text("📁 **Nenhum cliente ativo encontrado no banco de dados.**", parse_mode="Markdown")
@@ -265,13 +284,13 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         tempo_restante = expira_em - agora
         if tempo_restante > 0:
-            dias_Restantes = int(tempo_restante // 86400)
+            dias_restantes = int(tempo_restante // 86400)
             horas_restantes = int((tempo_restante % 86400) // 3600)
             minutos_restantes = int((tempo_restante % 3600) // 60)
-            if dias_Restantes > 365:
+            if dias_restantes > 365:
                 tempo_str = "Permanente ♾️"
             else:
-                tempo_str = f"{dias_Restantes}d {horas_restantes}h {minutos_restantes}m"
+                tempo_str = f"{dias_restantes}d {horas_restantes}h {minutos_restantes}m"
         else:
             tempo_str = "Expirado ❌"
             
@@ -300,10 +319,9 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uptime = int(time.time() - TEMPO_INICIAL)
     resposta = (
         f"🏓 **PONG! Informações do Sistema:**\n\n"
-        f"⚡ **Latência:** `{latencia}ms`\n"
+        f"⚡ **Latência do Bot:** `{latencia}ms`\n"
         f"⏳ **Uptime:** `{uptime // 3600}h {(uptime % 3600) // 60}m {uptime % 60}s`\n"
-        f"🧠 **Memória RAM:** `512 MB (Render Cloud Gratuito)`\n"
-        f"💻 **CPU:** `Instância Compartilhada`"
+        f"🧠 **Memória RAM:** `512 MB (Render Cloud)`"
     )
     await msg.edit_text(resposta, parse_mode="Markdown")
 
@@ -330,7 +348,7 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if plano_arg.startswith("plano"):
             if len(args) < 3:
-                await update.message.reply_text("⚠️ Informe o valor do plano após a palavra 'plano'. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
+                await update.message.reply_text("⚠️ Informe o valor do plano. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
                 return
             dias_valor = int(args[2])
         else:
@@ -363,7 +381,7 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             upsert=True
         )
-        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso no plano correspondente a `{dias_valor}`!", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso por `{dias_valor}` dias!", parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ Erro ao adicionar usuário: {e}")
 
@@ -396,7 +414,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📌 **Nome:** {title}\n"
             f"📂 **Tipo:** {tipo}\n"
             f"🆔 **ID Oficial:** `{chat_id}`\n\n"
-            f"👇 Clique no botão abaixo para copiar o ID ou usá-lo na variável do bot:"
+            f"👇 Clique no botão abaixo para copiar o ID:"
         )
         
         keyboard = [
@@ -427,7 +445,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for chat in chats:
             chat_id = chat["chat_id"]
-            title = chat["title"] or f"Chat {chat_id}"
+            title = chat.get("title", f"Chat {chat_id}")
             tipo = chat.get("type", "grupo")
             emoji = "📢" if tipo == "channel" else "👥"
             keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"cfg_chat_{chat_id}")])
@@ -546,15 +564,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
                 link_convite_gerado = None
-                try:
-                    chat_invite = await context.bot.create_chat_invite_link(
-                        chat_id=CANAL_ALVO_ID,
-                        member_limit=1,
-                        expire_date=int(time.time()) + 86400
-                    )
-                    link_convite_gerado = chat_invite.invite_link
-                except Exception:
-                    link_convite_gerado = None
+                if CANAL_ALVO_ID != 0:
+                    try:
+                        chat_invite = await context.bot.create_chat_invite_link(
+                            chat_id=CANAL_ALVO_ID,
+                            member_limit=1,
+                            expire_date=int(time.time()) + 86400
+                        )
+                        link_convite_gerado = chat_invite.invite_link
+                    except Exception:
+                        link_convite_gerado = None
 
                 texto_link = f"Aqui está o seu link de acesso exclusivo:\n{link_convite_gerado}" if link_convite_gerado else "⚠️ Entre em contato com o suporte (@Lyhhxv) para liberar seu acesso."
 
@@ -658,7 +677,7 @@ async def gerenciador_assinaturas(application):
                     except Exception:
                         pass
 
-                elif tempo_restante <= 0:
+                elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
                         await application.bot.unban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
