@@ -33,7 +33,7 @@ DONO_ID = 7711945457
 CANAL_ALVO_ID = -1007711945457  # Substitua pelo ID real do seu canal/grupo
 
 # CONEXÃO COM O MONGODB ATLAS (Nuvem Segura)
-MONGO_URI = "mongodb+srv://sanibronx21_db_user:gUIxS6Hx4loACGAB@cluster0.olwgxx.mongodb.net/?appName=Cluster0"
+MONGO_URI = "mongodb+srv://sanibronx21_db_user:<db_password>@cluster0.olwogxx.mongodb.net/?appName=Cluster0"
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["sanizinhabot_db"]
 collection_clientes = db["clientes"]
