@@ -4,6 +4,7 @@ import time
 import asyncio
 import requests
 import threading
+import re
 from flask import Flask
 from pymongo import MongoClient
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -193,7 +194,8 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
         "• `/ping` - Mostra a latência e o status da hospedagem\n"
-        "• `/addusuario` - Adiciona um usuário manualmente a um plano\n"
+        "• `/addusuario` - Adiciona um usuário manualmente com tempo flexível (m, h, d)\n"
+        "• `/delusuario` - Remove um usuário da base de clientes ativos\n"
         "• `/clientes` - Exibe todos os clientes ativos no grupo e suas informações\n"
         "• `/config` - Gerencia grupos e canais conectados ao bot\n"
         "• `/menu` - Mostra o painel completo com todos os comandos do bot"
@@ -214,7 +216,8 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/comandos` - Lista todos os comandos do sistema.\n"
         "• `/config` - Abre o painel interativo de grupos e canais para capturar IDs.\n"
         "• `/clientes` - Exibe a listagem completa de todos os clientes ativos no banco de dados com seus detalhes de expiração.\n"
-        "• `/addusuario <id> plano <dias>` - Adiciona ou renova manualmente o acesso de um usuário.\n"
+        "• `/addusuario <id> plano <valor>[m|h|d]` - Adiciona ou renova manualmente com suporte a minutos, horas ou dias (Ex: `/addusuario 123 plano 2 / 50m` ou `/1h` ou `/3d`).\n"
+        "• `/delusuario <id>` - Remove o usuário da lista de clientes (ele continua no grupo).\n"
         "• `/id` - Mostra o ID do chat atual e do usuário.\n"
         "• `/teste` - Testa a captura de dados e envio para o privado do dono.\n"
         "• `/ping` - Verifica a latência da API, uptime do servidor e consumo de recursos.\n\n"
@@ -337,34 +340,71 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
     
+    # Texto completo digitado após o comando para analisar formatos complexos com m, h, d
+    texto_completo = update.message.text
     args = context.args
+    
     if len(args) < 2:
-        await update.message.reply_text("⚠️ Use: `/addusuario <id_usuario> plano <2|7|20|60>`", parse_mode="Markdown")
+        await update.message.reply_text(
+            "⚠️ Use corretamente:\n"
+            "• `/addusuario <id> plano 2 / 50m` (minutos)\n"
+            "• `/addusuario <id> plano 2 / 2h` (horas)\n"
+            "• `/addusuario <id> plano 2 / 3d` (dias)\n"
+            "• `/addusuario <id> plano 7` (dias padrão)",
+            parse_mode="Markdown"
+        )
         return
     
     try:
         user_id = int(args[0])
-        plano_arg = args[1].lower()
         
-        if plano_arg.startswith("plano"):
-            if len(args) < 3:
-                await update.message.reply_text("⚠️ Informe o valor do plano. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
-                return
-            dias_valor = int(args[2])
+        # Junta tudo após o ID para buscar o sufixo de tempo (m, h ou d)
+        resto_texto = "".join(args[1:]).lower()
+        
+        duracao_segundos = 86400  # padrão
+        tempo_str_formatado = ""
+
+        # Procura por minutos (ex: 50m)
+        match_m = re.search(r'(\d+)m', resto_texto)
+        # Procura por horas (ex: 1h, 2h)
+        match_h = re.search(r'(\d+)h', resto_texto)
+        # Procura por dias (ex: 3d, 1d)
+        match_d = re.search(r'(\d+)d', resto_texto)
+
+        if match_m:
+            qtd_minutos = int(match_m.group(1))
+            duracao_segundos = qtd_minutos * 60
+            tempo_str_formatado = f"{qtd_minutos} minuto(s)"
+        elif match_h:
+            qtd_horas = int(match_h.group(1))
+            duracao_segundos = qtd_horas * 3600
+            tempo_str_formatado = f"{qtd_horas} hora(s)"
+        elif match_d:
+            qtd_dias = int(match_d.group(1))
+            duracao_segundos = qtd_dias * 86400
+            tempo_str_formatado = f"{qtd_dias} dia(s)"
         else:
-            dias_valor = int(plano_arg)
+            # Caso não tenha m, h ou d, tenta ler como o formato antigo de número de dias ou plano
+            plano_arg = args[1].lower()
+            if plano_arg.startswith("plano"):
+                if len(args) < 3:
+                    await update.message.reply_text("⚠️ Informe o valor do plano. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
+                    return
+                dias_valor = int(re.sub(r'[^0-9]', '', args[2]) or '1')
+            else:
+                dias_valor = int(re.sub(r'[^0-9]', '', plano_arg) or '1')
             
-        duracao_segundos = 86400  
-        if dias_valor == 7:
-            duracao_segundos = 86400 * 7
-        elif dias_valor == 20:
-            duracao_segundos = 86400 * 30
-        elif dias_valor == 60:
-            duracao_segundos = 86400 * 365 * 10  
-        elif dias_valor == 2:
-            duracao_segundos = 86400 * 1
-        else:
-            duracao_segundos = 86400 * dias_valor
+            if dias_valor == 7:
+                duracao_segundos = 86400 * 7
+            elif dias_valor == 20:
+                duracao_segundos = 86400 * 30
+            elif dias_valor == 60:
+                duracao_segundos = 86400 * 365 * 10  
+            elif dias_valor == 2:
+                duracao_segundos = 86400 * 1
+            else:
+                duracao_segundos = 86400 * dias_valor
+            tempo_str_formatado = f"{dias_valor} dia(s)"
             
         tempo_expiracao = time.time() + duracao_segundos
         
@@ -381,9 +421,29 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             upsert=True
         )
-        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso por `{dias_valor}` dias!", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso por `{tempo_str_formatado}`!", parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ Erro ao adicionar usuário: {e}")
+
+async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    
+    args = context.args
+    if not args:
+        await update.message.reply_text("⚠️ Use: `/delusuario <id_usuario>`", parse_mode="Markdown")
+        return
+    
+    try:
+        user_id = int(args[0])
+        resultado = collection_clientes.delete_one({"user_id": user_id})
+        
+        if resultado.deleted_count > 0:
+            await update.message.reply_text(f"✅ O usuário `{user_id}` foi removido da lista de clientes com sucesso! (Ele continua no grupo).", parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"⚠️ O usuário `{user_id}` não foi encontrado na base de dados de clientes.", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao remover usuário: {e}")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -722,9 +782,10 @@ def main():
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
+    app.add_handler(CommandHandler("delusuario", delusuario_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))    
     
-    print("𝐓𝐎 𝐎𝐍 𝐁𝐁 😗")
+    print("𝐓𝐎 𝐎𝐍 BB 😗")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
