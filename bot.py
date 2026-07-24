@@ -16,7 +16,6 @@ from telegram.ext import (
     ContextTypes,
     ApplicationHandlerStop
 )
-
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -27,18 +26,17 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-# CONFIGURAÇÕES DO BOT E DO MERCADO PAGO
+#  MERCADO DO SEU ZE
 TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
 MP_ACCESS_TOKEN = "APP_USR-2233798366076054-072321-1ebc8660b5623826d8e956f1d629fa98-805811682"
 
-# ID DO DONO EXCLUSIVO (Apenas este ID pode adicionar o bot em grupos/canais)
-DONO_ID = 805811682  # Atualizado para o ID proprietário da conta atual
+DONO_ID = 805811682
 
 LINK_DO_GRUPO = "https://t.me/+ZeYMNaaCZsdhZjMx"
 GRUPO_ALVO_ID = 7711945457
 TEMPO_INICIAL = time.time()
 
-# FOTO ÚNICA CONFIGURADA
+# FOTINHA BB
 FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
 
 # 𝐄𝐒𝐓𝐀𝐃𝐎𝐒 𝐄 𝐒𝐏𝐀𝐌 E ANTI-FLOOD/BAN NATURAIS
@@ -47,7 +45,7 @@ contador_spam = {}
 usuarios_bloqueados = {}     
 bloqueio_temporario = {}     
 pagamentos_notificados = set() 
-user_last_action = {}        # Controle de anti-flood avançado para burlar limites do Telegram
+user_last_action = {}        # anti-flood 
 
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Proteção anti-adicionamento em grupos/canais não autorizados
@@ -55,16 +53,12 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user = update.effective_user
     
     if chat and chat.type in ["group", "supergroup", "channel"]:
-        # Verifica se o bot foi adicionado recentemente por alguém
-        # O Telegram envia my_chat_member quando o bot é adicionado a um chat
         pass
 
     if not user:
         return  
     user_id = user.id
     agora = time.time()
-
-    # Sistema anti-flood e desvio de banimento por spam (Telegram Safe-Guards)
     if user_id in bloqueio_temporario:
         tempo_restante = bloqueio_temporario[user_id] - agora
         if tempo_restante > 0:
@@ -72,15 +66,13 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
         else:
             del bloqueio_temporario[user_id]
             if user_id in contador_spam:
-                del contador_spam[user_id]
-                
+                del contador_spam[user_id]                
     if user_id in usuarios_bloqueados:
-        raise ApplicationHandlerStop
-        
-    # Intervalo inteligente dinâmico para evitar FloodWait do Telegram (Bypass Anti-Ban)
+        raise ApplicationHandlerStop        
+
     if user_id in ultimo_envio:
         diferenca = agora - ultimo_envio[user_id]
-        if diferenca < 1.2:  # Ajustado para simular comportamento humano natural e evitar bloqueio da API
+        if diferenca < 1.2:
             contador_spam[user_id] = contador_spam.get(user_id, 0) + 1
             ultimo_envio[user_id] = agora
             if contador_spam[user_id] >= 8:
@@ -103,27 +95,21 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
     """Bloqueia estritamente a adição do bot em qualquer grupo ou canal por pessoas que não sejam o Dono."""
     result = update.my_chat_member
     if not result:
-        return
-        
+        return        
     chat = result.chat
     new_status = result.new_chat_member.status
     actor = result.from_user
-
-    # Se o bot foi adicionado a um grupo ou canal
     if chat.type in ["group", "supergroup", "channel"] and new_status in ["member", "administrator"]:
         if actor and actor.id != DONO_ID:
             try:
-                # Sai imediatamente do grupo/canal não autorizado
                 await context.bot.leave_chat(chat.id)
                 print(f"⚠️ Bot removido automaticamente do chat {chat.id} ({chat.title}) pois o usuário {actor.id} não é o dono.")
             except Exception as e:
                 print(f"Erro ao sair de chat não autorizado: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Segurança extra: comandos em chats privados evitam exposição desnecessária
     if update.effective_chat.type != "private":
         return
-
     texto_boas_vindas = (
         "🔥 **SEJA BEM-VINDO AO CANAL EXCLUSIVO** 🇧🇷
 
@@ -287,11 +273,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("⏳ Gerando seu PIX, aguarde um instante...")
             except Exception:
                 pass
-
         user = update.effective_user
         nome = user.first_name if user.first_name else "Cliente"
         sobrenome = user.last_name if user.last_name else "Telegram"
-
         url = "https://api.mercadopago.com/v1/payments"
         headers = {
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
@@ -308,8 +292,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "last_name": sobrenome
             }
         }
-
-        # Requisição segura com tratamento de exceção para evitar quedas e bloqueios de socket
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
         except Exception as e:
@@ -348,13 +330,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payment_id = data.split("_")[1]       
         url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
         headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}      
-        
         try:
             response = requests.get(url, headers=headers, timeout=10)
         except Exception:
             await query.message.reply_text("❌ Erro de conexão ao verificar pagamento. Tente novamente.", parse_mode="Markdown")
             return
-
         if response.status_code == 200:
             resp_data = response.json()
             status = resp_data.get("status")       
@@ -441,30 +421,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
             await query.message.reply_text("❌ Não foi possível verificar o pagamento no momento. Tente novamente em instantes.")
-
 def main():
     t = threading.Thread(target=run_web, daemon=True)
     t.start()
-
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    
-    # Interceptador universal com tratamento anti-flood (burlador de restrições de spam)
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
-
-    # Handler restrito para impedir que qualquer outra pessoa adicione o bot em grupos/canais
     from telegram.ext import ChatMemberHandler
     app.add_handler(ChatMemberHandler(verificar_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("teste", teste_cmd))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    
+    app.add_handler(CallbackQueryHandler(button_handler))    
     print("𝐓𝐎 𝐎𝐍 𝐁𝐁 😗")
     app.run_polling(drop_pending_updates=False)
-
 if __name__ == "__main__":
     main()
