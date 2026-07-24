@@ -27,9 +27,9 @@ def run_web():
 
 TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
 MP_ACCESS_TOKEN = "APP_USR-2233798366076054-072321-1ebc8660b5623826d8e956f1d629fa98-805811682"
-DONO_ID = 805811682
+DONO_ID = 7711945457
+
 LINK_DO_GRUPO = "https://t.me/+ZeYMNaaCZsdhZjMx"
-GRUPO_ALVO_ID = 7711945457
 TEMPO_INICIAL = time.time()
 FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
 
@@ -143,7 +143,7 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text("✅ Teste executado! Os dados foram enviados lá no seu privado.")
     try:
-        await context.bot.send_message(chat_id=GRUPO_ALVO_ID, text=msg_teste, parse_mode="Markdown")
+        await context.bot.send_message(chat_id=DONO_ID, text=msg_teste, parse_mode="Markdown")
     except Exception:
         pass
 
@@ -280,7 +280,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"🟢 **Status:** Aprovado"
                     )
                     try:
-                        await context.bot.send_message(chat_id=GRUPO_ALVO_ID, text=relatorio_privado, parse_mode="Markdown")
+                        await context.bot.send_message(chat_id=DONO_ID, text=relatorio_privado, parse_mode="Markdown")
                     except Exception:
                         pass
             else:
