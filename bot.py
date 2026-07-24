@@ -27,15 +27,16 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
-MP_ACCESS_TOKEN = "APP_USR-2233798366076054-072321-1ebc8660b5623826d8e956f1d629fa98-805811682"
-DONO_ID = 7711945457
-CANAL_ALVO_ID = -1007711945457
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN")
+DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
+CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID"))
 
-MONGO_URI = "mongodb+srv://sanibronx21_db_user:gUIxS6Hx4loACGAB@cluster0.olwogxx.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI")
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["sanizinhabot_db"]
 collection_clientes = db["clientes"]
+collection_chats = db["chats_autorizados"]
 
 TEMPO_INICIAL = time.time()
 FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
@@ -53,11 +54,9 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
     
-    # Dono tem passe livre para qualquer comando e ação
     if user_id == DONO_ID:
         return
 
-    # Verificar restrição de comandos para usuários comuns (apenas /start e /suporte permitidos)
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
         if cmd not in ['/start', '/suporte', '/suport']:
@@ -99,13 +98,16 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
         return        
     chat = result.chat
     new_status = result.new_chat_member.status
-    actor = result.from_user
-    if chat.type in ["group", "supergroup", "channel"] and new_status in ["member", "administrator"]:
-        if actor and actor.id != DONO_ID:
-            try:
-                await context.bot.leave_chat(chat.id)
-            except Exception:
-                pass
+    
+    if chat.type in ["group", "supergroup", "channel"]:
+        if new_status in ["member", "administrator"]:
+            collection_chats.update_one(
+                {"chat_id": chat.id},
+                {"$set": {"chat_id": chat.id, "title": chat.title, "type": chat.type}},
+                upsert=True
+            )
+        elif new_status in ["left", "kicked"]:
+            collection_chats.delete_one({"chat_id": chat.id})
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
@@ -180,6 +182,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/ping` - Mostra a latência e o status da hospedagem\n"
         "• `/addusuario` - Adiciona um usuário manualmente a um plano\n"
         "• `/clientes` - Exibe todos os clientes ativos no grupo e suas informações\n"
+        "• `/config` - Gerencia grupos e canais conectados ao bot\n"
         "• `/menu` - Mostra o painel completo com todos os comandos do bot"
     )
     await update.message.reply_text(texto, parse_mode="Markdown")
@@ -196,6 +199,7 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👑 **Comandos Exclusivos do Dono:**\n"
         "• `/menu` - Abre este painel completo com todos os comandos.\n"
         "• `/comandos` - Lista todos os comandos do sistema.\n"
+        "• `/config` - Abre o painel interativo de grupos e canais para capturar IDs.\n"
         "• `/clientes` - Exibe a listagem completa de todos os clientes ativos no banco de dados com seus detalhes de expiração.\n"
         "• `/addusuario <id> plano <dias>` - Adiciona ou renova manualmente o acesso de um usuário.\n"
         "• `/id` - Mostra o ID do chat atual e do usuário.\n"
@@ -207,6 +211,36 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Verificador automático de pagamento via API do Mercado Pago."
     )
     await update.message.reply_text(texto_menu, parse_mode="Markdown")
+
+async def config_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    
+    chats = list(collection_chats.find({}))
+    if not chats:
+        await update.message.reply_text(
+            "⚙️ **Painel de Configuração de Grupos/Canais**\n\n"
+            "Nenhum grupo ou canal foi catalogado ainda.\n"
+            "Adicione o bot como administrador em algum canal ou grupo para que ele apareça aqui automaticamente!",
+            parse_mode="Markdown"
+        )
+        return
+
+    keyboard = []
+    for chat in chats:
+        chat_id = chat["chat_id"]
+        title = chat["title"] or f"Chat {chat_id}"
+        tipo = chat.get("type", "grupo")
+        emoji = "📢" if tipo == "channel" else "👥"
+        keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"cfg_chat_{chat_id}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "⚙️ **Painel de Configuração de Grupos/Canais**\n\n"
+        "Selecione abaixo o canal ou grupo que deseja gerenciar:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
 
 async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -334,6 +368,79 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
+    
+    if data.startswith("cfg_chat_"):
+        chat_id_str = data.replace("cfg_chat_", "")
+        chat_data = collection_chats.find_one({"chat_id": int(chat_id_str)})
+        
+        if not chat_data:
+            try:
+                await query.answer("❌ Chat não encontrado no banco de dados.", show_alert=True)
+            except Exception:
+                pass
+            return
+            
+        try:
+            await query.answer()
+        except Exception:
+            pass
+            
+        title = chat_data.get("title", "Desconhecido")
+        chat_id = chat_data["chat_id"]
+        tipo = chat_data.get("type", "grupo")
+        
+        texto_cfg = (
+            f"⚙️ **Configuração do Chat**\n\n"
+            f"📌 **Nome:** {title}\n"
+            f"📂 **Tipo:** {tipo}\n"
+            f"🆔 **ID Oficial:** `{chat_id}`\n\n"
+            f"👇 Clique no botão abaixo para copiar o ID ou usá-lo na variável do bot:"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("📋 Copiar ID do Chat", copy_text=dict(text=str(chat_id)))],
+            [InlineKeyboardButton("🔙 Voltar aos Chats", callback_data="cfg_voltar_lista")]
+        ]
+        
+        try:
+            await query.edit_message_text(texto_cfg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        except Exception:
+            pass
+        return
+
+    elif data == "cfg_voltar_lista":
+        try:
+            await query.answer()
+        except Exception:
+            pass
+            
+        chats = list(collection_chats.find({}))
+        if not chats:
+            try:
+                await query.edit_message_text("⚙️ Nenhum chat catalogado no momento.", parse_mode="Markdown")
+            except Exception:
+                pass
+            return
+
+        keyboard = []
+        for chat in chats:
+            chat_id = chat["chat_id"]
+            title = chat["title"] or f"Chat {chat_id}"
+            tipo = chat.get("type", "grupo")
+            emoji = "📢" if tipo == "channel" else "👥"
+            keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"cfg_chat_{chat_id}")])
+
+        try:
+            await query.edit_message_text(
+                "⚙️ **Painel de Configuração de Grupos/Canais**\n\n"
+                "Selecione abaixo o canal ou grupo que deseja gerenciar:",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        except Exception:
+            pass
+        return
+
     if data.startswith("comprar_"):
         try:
             await query.answer()
@@ -590,6 +697,7 @@ def main():
     app.add_handler(CommandHandler("comandos", comandos_cmd))
     app.add_handler(CommandHandler("menu", menu_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
+    app.add_handler(CommandHandler("config", config_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
