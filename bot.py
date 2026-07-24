@@ -30,10 +30,9 @@ def run_web():
 TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
 MP_ACCESS_TOKEN = "APP_USR-2233798366076054-072321-1ebc8660b5623826d8e956f1d629fa98-805811682"
 DONO_ID = 7711945457
-CANAL_ALVO_ID = -1007711945457  # Substitua pelo ID real do seu canal/grupo
+CANAL_ALVO_ID = -1007711945457
 
-# CONEXÃO COM O MONGODB ATLAS (Nuvem Segura)
-MONGO_URI = "mongodb+srv://sanibronx21_db_user:<db_password>@cluster0.olwogxx.mongodb.net/?appName=Cluster0"
+MONGO_URI = "mongodb+srv://sanibronx21_db_user:gUIxS6Hx4loACGAB@cluster0.olwogxx.mongodb.net/?appName=Cluster0"
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["sanizinhabot_db"]
 collection_clientes = db["clientes"]
@@ -54,6 +53,16 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
     
+    # Dono tem passe livre para qualquer comando e ação
+    if user_id == DONO_ID:
+        return
+
+    # Verificar restrição de comandos para usuários comuns (apenas /start e /suporte permitidos)
+    if update.message and update.message.text and update.message.text.startswith('/'):
+        cmd = update.message.text.split()[0].split('@')[0].lower()
+        if cmd not in ['/start', '/suporte', '/suport']:
+            raise ApplicationHandlerStop
+
     if user_id in bloqueio_temporario:
         if bloqueio_temporario[user_id] - agora > 0:
             raise ApplicationHandlerStop  
@@ -128,6 +137,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
     chat = update.effective_chat
     user = update.effective_user
     resposta = (
@@ -140,7 +151,7 @@ async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    if not user:
+    if not user or user.id != DONO_ID:
         return
     msg_teste = (
         f"🧪 **DADOS CAPTURADOS (COMANDO /TESTE)!** 🧪\n\n"
@@ -156,6 +167,8 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
@@ -164,11 +177,87 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/teste` - Testa o envio de dados\n"
         "• `/suporte` - Mostra o contato do suporte\n"
         "• `/comandos` - Mostra esta lista de comandos\n"
-        "• `/ping` - Mostra a latência e o status da hospedagem"
+        "• `/ping` - Mostra a latência e o status da hospedagem\n"
+        "• `/addusuario` - Adiciona um usuário manualmente a um plano\n"
+        "• `/clientes` - Exibe todos os clientes ativos no grupo e suas informações\n"
+        "• `/menu` - Mostra o painel completo com todos os comandos do bot"
     )
     await update.message.reply_text(texto, parse_mode="Markdown")
 
+async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    texto_menu = (
+        "🎛 **PAINEL DE CONTROLE - MENU DO DONO** 🎛\n\n"
+        "Aqui estão absolutamente **TODOS** os comandos integrados e operacionais do bot:\n\n"
+        "🟢 **Comandos de Usuários/Públicos:**\n"
+        "• `/start` - Inicia o bot, exibe a imagem e os planos de assinatura Pix.\n"
+        "• `/suporte` (ou `/suport`) - Mostra o contato direto da central de atendimento.\n\n"
+        "👑 **Comandos Exclusivos do Dono:**\n"
+        "• `/menu` - Abre este painel completo com todos os comandos.\n"
+        "• `/comandos` - Lista todos os comandos do sistema.\n"
+        "• `/clientes` - Exibe a listagem completa de todos os clientes ativos no banco de dados com seus detalhes de expiração.\n"
+        "• `/addusuario <id> plano <dias>` - Adiciona ou renova manualmente o acesso de um usuário.\n"
+        "• `/id` - Mostra o ID do chat atual e do usuário.\n"
+        "• `/teste` - Testa a captura de dados e envio para o privado do dono.\n"
+        "• `/ping` - Verifica a latência da API, uptime do servidor e consumo de recursos.\n\n"
+        "⚙️ **Sistemas Automáticos em Execução:**\n"
+        "• Interceptador universal de anti-spam e bloqueio de comandos restritos.\n"
+        "• Gerenciador automático de assinaturas (aviso de 1 dia, aviso de 20 minutos e banimento/remoção automática ao expirar).\n"
+        "• Verificador automático de pagamento via API do Mercado Pago."
+    )
+    await update.message.reply_text(texto_menu, parse_mode="Markdown")
+
+async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    
+    agora = time.time()
+    clientes_cursor = collection_clientes.find({})
+    lista_clientes = list(clientes_cursor)
+    
+    if not lista_clientes:
+        await update.message.reply_text("📁 **Nenhum cliente ativo encontrado no banco de dados.**", parse_mode="Markdown")
+        return
+        
+    resposta = f"📋 **LISTA DE CLIENTES ATIVOS ({len(lista_clientes)})**:\n\n"
+    
+    for i, cliente in enumerate(lista_clientes, 1):
+        user_id = cliente.get("user_id")
+        nome = cliente.get("nome", "Desconhecido")
+        expira_em = cliente.get("expira_em", 0)
+        
+        tempo_restante = expira_em - agora
+        if tempo_restante > 0:
+            dias_Restantes = int(tempo_restante // 86400)
+            horas_restantes = int((tempo_restante % 86400) // 3600)
+            minutos_restantes = int((tempo_restante % 3600) // 60)
+            if dias_Restantes > 365:
+                tempo_str = "Permanente ♾️"
+            else:
+                tempo_str = f"{dias_Restantes}d {horas_restantes}h {minutos_restantes}m"
+        else:
+            tempo_str = "Expirado ❌"
+            
+        data_exp_formatada = time.strftime('%d/%m/%Y às %H:%M', time.localtime(expira_em)) if expira_em > 0 else "N/A"
+        
+        resposta += (
+            f"🔹 **{i}. {nome}**\n"
+            f"🆔 ID: `{user_id}`\n"
+            f"⏳ Expira em: `{tempo_str}`\n"
+            f"📅 Data limite: `{data_exp_formatada}`\n\n"
+        )
+        
+        if len(resposta) > 3800:
+            await update.message.reply_text(resposta, parse_mode="Markdown")
+            resposta = ""
+            
+    if resposta:
+        await update.message.reply_text(resposta, parse_mode="Markdown")
+
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
     inicio = time.time()
     msg = await update.message.reply_text("pong 🏓...")
     latencia = int((time.time() - inicio) * 1000)
@@ -189,6 +278,58 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👉 **@Lyhhxv**",
         parse_mode="Markdown"
     )
+
+async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    
+    args = context.args
+    if len(args) < 2:
+        await update.message.reply_text("⚠️ Use: `/addusuario <id_usuario> plano <2|7|20|60>`", parse_mode="Markdown")
+        return
+    
+    try:
+        user_id = int(args[0])
+        plano_arg = args[1].lower()
+        
+        if plano_arg.startswith("plano"):
+            if len(args) < 3:
+                await update.message.reply_text("⚠️ Informe o valor do plano após a palavra 'plano'. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
+                return
+            dias_valor = int(args[2])
+        else:
+            dias_valor = int(plano_arg)
+            
+        duracao_segundos = 86400  
+        if dias_valor == 7:
+            duracao_segundos = 86400 * 7
+        elif dias_valor == 20:
+            duracao_segundos = 86400 * 30
+        elif dias_valor == 60:
+            duracao_segundos = 86400 * 365 * 10  
+        elif dias_valor == 2:
+            duracao_segundos = 86400 * 1
+        else:
+            duracao_segundos = 86400 * dias_valor
+            
+        tempo_expiracao = time.time() + duracao_segundos
+        
+        collection_clientes.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "user_id": user_id,
+                    "nome": "Adicionado Manualmente",
+                    "expira_em": tempo_expiracao,
+                    "aviso_1dia_enviado": False,
+                    "aviso_20min_enviado": False
+                }
+            },
+            upsert=True
+        )
+        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso no plano correspondente a `{dias_valor}`!", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao adicionar usuário: {e}")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -270,19 +411,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 valor_pago = float(resp_data.get("transaction_amount", 0.0))
                 
-                # Calcular tempo de expiração
-                duracao_segundos = 86400  # Padrão 1 dia (R$ 2,00)
+                duracao_segundos = 86400  
                 if valor_pago == 7.0:
                     duracao_segundos = 86400 * 7
                 elif valor_pago == 20.0:
                     duracao_segundos = 86400 * 30
                 elif valor_pago == 60.0:
-                    duracao_segundos = 86400 * 365 * 10  # Permanente
+                    duracao_segundos = 86400 * 365 * 10  
                 
                 user_id = update.effective_user.id
                 tempo_expiracao = time.time() + duracao_segundos
                 
-                # Salvar ou atualizar no MongoDB Atlas (nuvem)
                 collection_clientes.update_one(
                     {"user_id": user_id},
                     {
@@ -297,7 +436,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     upsert=True
                 )
 
-                # Gerar link de convite único
                 link_convite_gerado = None
                 try:
                     chat_invite = await context.bot.create_chat_invite_link(
@@ -365,9 +503,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# --- TAREFA EM SEGUNDO PLANO PARA CONTROLAR OS PRAZOS E AVISOS (MONGODB) ---
 async def gerenciador_assinaturas(application):
-    await asyncio.sleep(10)  # Espera o bot iniciar
+    await asyncio.sleep(10)  
     while True:
         try:
             agora = time.time()
@@ -378,7 +515,6 @@ async def gerenciador_assinaturas(application):
                 expira_em = cliente["expira_em"]
                 tempo_restante = expira_em - agora
 
-                # 1. Aviso faltando 1 dia (entre 23h e 24h restantes)
                 if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
                     try:
                         msg = (
@@ -396,7 +532,6 @@ async def gerenciador_assinaturas(application):
                     except Exception:
                         pass
 
-                # 2. Aviso faltando 20 minutos (entre 0 e 1200 segundos restantes)
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
                         msg = (
@@ -414,7 +549,6 @@ async def gerenciador_assinaturas(application):
                     except Exception:
                         pass
 
-                # 3. Tempo esgotado: Expulsar do canal e remover do banco
                 elif tempo_restante <= 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
@@ -429,13 +563,12 @@ async def gerenciador_assinaturas(application):
                     except Exception:
                         pass
                     
-                    # Deletar do banco de dados na nuvem
                     collection_clientes.delete_one({"user_id": user_id})
 
         except Exception as e:
             print(f"Erro no gerenciador: {e}")
 
-        await asyncio.sleep(60)  # Roda a verificação a cada 1 minuto
+        await asyncio.sleep(60)  
 
 def run_background_loop(application):
     loop = asyncio.new_event_loop()
@@ -447,7 +580,6 @@ def main():
     
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # Iniciar thread de checagem de prazos com MongoDB
     threading.Thread(target=run_background_loop, args=(app,), daemon=True).start()
 
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
@@ -456,8 +588,11 @@ def main():
     app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("teste", teste_cmd))
     app.add_handler(CommandHandler("comandos", comandos_cmd))
+    app.add_handler(CommandHandler("menu", menu_cmd))
+    app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
+    app.add_handler(CommandHandler("addusuario", addusuario_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))    
     
     print("𝐓𝐎 𝐎𝐍 𝐁𝐁 😗")
