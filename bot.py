@@ -1,9 +1,11 @@
 import os
 import uuid
 import time
+import asyncio
 import requests
 import threading
 from flask import Flask
+from pymongo import MongoClient
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, 
@@ -28,8 +30,14 @@ def run_web():
 TELEGRAM_TOKEN = "8919678511:AAEzQ7m2NA2vHeA9UYXo9HxztXtursMo3oI"
 MP_ACCESS_TOKEN = "APP_USR-2233798366076054-072321-1ebc8660b5623826d8e956f1d629fa98-805811682"
 DONO_ID = 7711945457
+CANAL_ALVO_ID = -1007711945457  # Substitua pelo ID real do seu canal/grupo
 
-LINK_DO_GRUPO = "https://t.me/+ZeYMNaaCZsdhZjMx"
+# CONEXÃO COM O MONGODB ATLAS (Nuvem Segura)
+MONGO_URI = "mongodb+srv://sanibronx21_db_user:gUIxS6Hx4loACGAB@cluster0.olwgxx.mongodb.net/?appName=Cluster0"
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["sanizinhabot_db"]
+collection_clientes = db["clientes"]
+
 TEMPO_INICIAL = time.time()
 FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
 
@@ -259,13 +267,57 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
                 except Exception:
                     pass              
+
+                valor_pago = float(resp_data.get("transaction_amount", 0.0))
+                
+                # Calcular tempo de expiração
+                duracao_segundos = 86400  # Padrão 1 dia (R$ 2,00)
+                if valor_pago == 7.0:
+                    duracao_segundos = 86400 * 7
+                elif valor_pago == 20.0:
+                    duracao_segundos = 86400 * 30
+                elif valor_pago == 60.0:
+                    duracao_segundos = 86400 * 365 * 10  # Permanente
+                
+                user_id = update.effective_user.id
+                tempo_expiracao = time.time() + duracao_segundos
+                
+                # Salvar ou atualizar no MongoDB Atlas (nuvem)
+                collection_clientes.update_one(
+                    {"user_id": user_id},
+                    {
+                        "$set": {
+                            "user_id": user_id,
+                            "nome": update.effective_user.first_name or "Cliente",
+                            "expira_em": tempo_expiracao,
+                            "aviso_1dia_enviado": False,
+                            "aviso_20min_enviado": False
+                        }
+                    },
+                    upsert=True
+                )
+
+                # Gerar link de convite único
+                link_convite_gerado = None
+                try:
+                    chat_invite = await context.bot.create_chat_invite_link(
+                        chat_id=CANAL_ALVO_ID,
+                        member_limit=1,
+                        expire_date=int(time.time()) + 86400
+                    )
+                    link_convite_gerado = chat_invite.invite_link
+                except Exception:
+                    link_convite_gerado = None
+
+                texto_link = f"Aqui está o seu link de acesso exclusivo:\n{link_convite_gerado}" if link_convite_gerado else "⚠️ Entre em contato com o suporte (@Lyhhxv) para liberar seu acesso."
+
                 await query.message.reply_text(
                     f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
-                    f"Muito obrigado pela compra! Aqui está o seu link de acesso exclusivo:\n{LINK_DO_GRUPO}"
+                    f"Muito obrigado pela compra!\n{texto_link}"
                 )
+
                 if payment_id not in pagamentos_notificados:
                     pagamentos_notificados.add(payment_id)
-                    valor_pago = float(resp_data.get("transaction_amount", 0.0))
                     plano_nome = "1 Dia 🔥 (R$ 2,00)" if valor_pago == 2.0 else "1 Semana (R$ 7,00)" if valor_pago == 7.0 else "1 Mês (R$ 20,00)" if valor_pago == 20.0 else "Permanente (R$ 60,00)" if valor_pago == 60.0 else f"Personalizado (R$ {valor_pago:.2f})"
                     comprador = update.effective_user
                     relatorio_privado = (
@@ -301,9 +353,103 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
             await query.message.reply_text("❌ Não foi possível verificar o pagamento no momento. Tente novamente em instantes.")
 
+    elif data == "renovar_2.00":
+        query.data = "comprar_2.00"
+        await button_handler(update, context)
+
+    elif data == "ver_outros_precos":
+        keyboard = [
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        ]
+        await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+# --- TAREFA EM SEGUNDO PLANO PARA CONTROLAR OS PRAZOS E AVISOS (MONGODB) ---
+async def gerenciador_assinaturas(application):
+    await asyncio.sleep(10)  # Espera o bot iniciar
+    while True:
+        try:
+            agora = time.time()
+            clientes = collection_clientes.find({})
+
+            for cliente in clientes:
+                user_id = cliente["user_id"]
+                expira_em = cliente["expira_em"]
+                tempo_restante = expira_em - agora
+
+                # 1. Aviso faltando 1 dia (entre 23h e 24h restantes)
+                if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
+                    try:
+                        msg = (
+                            "⚠️ **SEU PLANO VENCE AMANHÃ!** ⚠️\n\n"
+                            "O seu acesso ao nosso canal exclusivo expira em breve. "
+                            "Não fique de fora das atualizações diárias!\n\n"
+                            "👇 Renove agora mesmo para continuar garantindo o seu acesso:"
+                        )
+                        keyboard = [
+                            [InlineKeyboardButton("🔄 Continuar Assinado (R$ 2,00 - 1 Dia)", callback_data="renovar_2.00")],
+                            [InlineKeyboardButton("💎 Ver Outros Planos", callback_data="ver_outros_precos")]
+                        ]
+                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                        collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_1dia_enviado": True}})
+                    except Exception:
+                        pass
+
+                # 2. Aviso faltando 20 minutos (entre 0 e 1200 segundos restantes)
+                elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
+                    try:
+                        msg = (
+                            "🚨 **ATENÇÃO: SEU PLANO EXPIRA EM POUCOS MINUTOS!** 🚨\n\n"
+                            "O seu tempo está acabando e você será removido do canal em breve. "
+                            "Garanta sua permanência agora para não perder nenhum conteúdo!\n\n"
+                            "👇 Pague agora e continue com acesso liberado:"
+                        )
+                        keyboard = [
+                            [InlineKeyboardButton("🔄 Continuar Assinado por R$ 2,00", callback_data="renovar_2.00")],
+                            [InlineKeyboardButton("📋 Ver Outros Preços", callback_data="ver_outros_precos")]
+                        ]
+                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                        collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_20min_enviado": True}})
+                    except Exception:
+                        pass
+
+                # 3. Tempo esgotado: Expulsar do canal e remover do banco
+                elif tempo_restante <= 0:
+                    try:
+                        await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
+                        await application.bot.unban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
+                        
+                        await application.bot.send_message(
+                            chat_id=user_id,
+                            text="❌ **Seu plano expirou e você foi removido do canal.**\n\n"
+                                 "Para entrar novamente, basta iniciar o bot com `/start` e adquirir um novo plano!",
+                            parse_mode="Markdown"
+                        )
+                    except Exception:
+                        pass
+                    
+                    # Deletar do banco de dados na nuvem
+                    collection_clientes.delete_one({"user_id": user_id})
+
+        except Exception as e:
+            print(f"Erro no gerenciador: {e}")
+
+        await asyncio.sleep(60)  # Roda a verificação a cada 1 minuto
+
+def run_background_loop(application):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(gerenciador_assinaturas(application))
+
 def main():
     threading.Thread(target=run_web, daemon=True).start()
+    
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    
+    # Iniciar thread de checagem de prazos com MongoDB
+    threading.Thread(target=run_background_loop, args=(app,), daemon=True).start()
+
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
     app.add_handler(ChatMemberHandler(verificar_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
     app.add_handler(CommandHandler("start", start))
@@ -313,6 +459,7 @@ def main():
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))    
+    
     print("𝐓𝐎 𝐎𝐍 𝐁𝐁 😗")
     app.run_polling(drop_pending_updates=False)
 
