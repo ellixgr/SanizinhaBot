@@ -54,9 +54,11 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
     
+    # Se for o dono, libera a execução de tudo imediatamente
     if user_id == DONO_ID:
         return
 
+    # Bloqueia comandos restritos para quem não é o dono
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
         if cmd not in ['/start', '/suporte', '/suport']:
