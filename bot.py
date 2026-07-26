@@ -198,6 +198,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/delusuario` - Remove um usuário da base de clientes ativos\n"
         "• `/clientes` - Exibe todos os clientes ativos no grupo e suas informações\n"
         "• `/config` - Gerencia grupos e canais conectados ao bot\n"
+        "• `/grupos` - Mostra os grupos do bot e lista os IDs dos membros\n"
         "• `/menu` - Mostra o painel completo com todos os comandos do bot"
     )
     await update.message.reply_text(texto, parse_mode="Markdown")
@@ -215,15 +216,15 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/menu` - Abre este painel completo com todos os comandos.\n"
         "• `/comandos` - Lista todos os comandos do sistema.\n"
         "• `/config` - Abre o painel interativo de grupos e canais para capturar IDs.\n"
+        "• `/grupos` - Lista todos os chats do bot para extrair Nome e ID dos membros.\n"
         "• `/clientes` - Exibe a listagem completa de todos os clientes ativos no banco de dados com seus detalhes de expiração.\n"
-        "• `/addusuario <id> plano <valor>[m|h|d]` - Adiciona ou renova manualmente com suporte a minutos, horas ou dias (Ex: `/addusuario 123 plano 2 / 50m` ou `/1h` ou `/3d`).\n"
-        "• `/delusuario <id>` - Remove o usuário da lista de clientes (ele continua no grupo).\n"
+        "• `/addusuario <id> plano <valor>[m|h|d]` - Adiciona ou renova manualmente com suporte a minutos, horas ou dias.\n"
+        "• `/delusuario <id>` - Remove o usuário da lista de clientes.\n"
         "• `/id` - Mostra o ID do chat atual e do usuário.\n"
-        "• `/teste` - Testa a captura de dados e envio para o privado do dono.\n"
         "• `/ping` - Verifica a latência da API, uptime do servidor e consumo de recursos.\n\n"
         "⚙️ **Sistemas Automáticos em Execução:**\n"
         "• Interceptador universal de anti-spam e bloqueio de comandos restritos.\n"
-        "• Gerenciador automático de assinaturas (aviso de 1 dia, aviso de 20 minutos e banimento/remoção automática ao expirar).\n"
+        "• Gerenciador automático de assinaturas (aviso e banimento automático).\n"
         "• Verificador automático de pagamento via API do Mercado Pago."
     )
     await update.message.reply_text(texto_menu, parse_mode="Markdown")
@@ -259,6 +260,41 @@ async def config_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "⚙️ **Painel de Configuração de Grupos/Canais**\n\n"
         "Selecione abaixo o canal ou grupo que deseja gerenciar:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
+
+async def grupos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+    
+    try:
+        chats = list(collection_chats.find({}))
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao buscar chats no banco de dados:\n`{e}`", parse_mode="Markdown")
+        return
+
+    if not chats:
+        await update.message.reply_text(
+            "📁 **Nenhum grupo ou canal encontrado.**\n\n"
+            "Adicione o bot em um grupo/canal para que ele apareça nesta listagem.",
+            parse_mode="Markdown"
+        )
+        return
+
+    keyboard = []
+    for chat in chats:
+        chat_id = chat["chat_id"]
+        title = chat.get("title", f"Chat {chat_id}")
+        tipo = chat.get("type", "group")
+        emoji = "📢" if tipo == "channel" else "👥"
+        # Callback customizado para puxar os membros
+        keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"listar_membros_{chat_id}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "👥 **SELECIONE UM GRUPO OU CANAL** 👥\n\n"
+        "Escolha abaixo o chat para o qual deseja extrair a lista com o **Nome** e o **ID** de todos os usuários:",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
@@ -340,10 +376,7 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
     
-    # Texto completo digitado após o comando para analisar formatos complexos com m, h, d
-    texto_completo = update.message.text
     args = context.args
-    
     if len(args) < 2:
         await update.message.reply_text(
             "⚠️ Use corretamente:\n"
@@ -357,18 +390,13 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         user_id = int(args[0])
-        
-        # Junta tudo após o ID para buscar o sufixo de tempo (m, h ou d)
         resto_texto = "".join(args[1:]).lower()
         
-        duracao_segundos = 86400  # padrão
+        duracao_segundos = 86400  
         tempo_str_formatado = ""
 
-        # Procura por minutos (ex: 50m)
         match_m = re.search(r'(\d+)m', resto_texto)
-        # Procura por horas (ex: 1h, 2h)
         match_h = re.search(r'(\d+)h', resto_texto)
-        # Procura por dias (ex: 3d, 1d)
         match_d = re.search(r'(\d+)d', resto_texto)
 
         if match_m:
@@ -384,7 +412,6 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             duracao_segundos = qtd_dias * 86400
             tempo_str_formatado = f"{qtd_dias} dia(s)"
         else:
-            # Caso não tenha m, h ou d, tenta ler como o formato antigo de número de dias ou plano
             plano_arg = args[1].lower()
             if plano_arg.startswith("plano"):
                 if len(args) < 3:
@@ -449,6 +476,66 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     
+    # NOVO: Handler para listar membros do grupo selecionado
+    if data.startswith("listar_membros_"):
+        chat_id_str = data.replace("listar_membros_", "")
+        try:
+            chat_id = int(chat_id_str)
+        except ValueError:
+            return
+
+        try:
+            await query.answer("🔄 Buscando membros...", show_alert=False)
+        except Exception:
+            pass
+
+        chat_data = collection_chats.find_one({"chat_id": chat_id})
+        chat_title = chat_data.get("title", "Grupo") if chat_data else "Grupo"
+        chat_type = chat_data.get("type", "group") if chat_data else "group"
+
+        # Canais normais não permitem listar membros pela API do Telegram
+        if chat_type == "channel":
+            try:
+                await query.message.reply_text(
+                    f"⚠️ O chat **{chat_title}** é um **Canal**. Por restrições de privacidade da API do Telegram, os bots não conseguem listar a lista completa de inscritos de canais.",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
+            return
+
+        try:
+            # Tenta pegar a contagem ou administrador caso queira, 
+            # Nota: A API oficial do Telegram (bot) não fornece um método direto para puxar 
+            # todos os membros comuns de um grupo de uma só vez (getChatMembers não existe).
+            # No entanto, podemos puxar administradores ou usar métodos alternativos se o bot registrar as interações.
+            # Vamos avisar o dono sobre essa limitação nativa do Telegram e listar os admins capturados:
+            
+            admins = await context.bot.get_chat_administrators(chat_id=chat_id)
+            
+            resposta_membros = f"📋 **Membros / Admins do Grupo:** `{chat_title}`\n\n"
+            resposta_membros += "⚠️ *Nota: O Telegram restringe o acesso direto à lista completa de membros comuns via Bot API por privacidade. Abaixo estão os administradores ativos detectados neste chat:*\n\n"
+
+            for admin in admins:
+                user = admin.user
+                nome = user.first_name or "Sem nome"
+                uid = user.id
+                resposta_membros += f"• Nome: {nome}\n  Id: `{uid}`\n\n"
+
+            if len(resposta_membros) > 3800:
+                await query.message.reply_text(resposta_membros[:3800], parse_mode="Markdown")
+            else:
+                await query.message.reply_text(resposta_membros, parse_mode="Markdown")
+
+        except Exception as e:
+            await query.message.reply_text(
+                f"❌ Não foi possível listar os membros deste grupo.\n\n"
+                f"Certifique-se de que o bot é **Administrador** do grupo.\n"
+                f"Erro técnico: `{e}`",
+                parse_mode="Markdown"
+            )
+        return
+
     if data.startswith("cfg_chat_"):
         chat_id_str = data.replace("cfg_chat_", "")
         chat_data = collection_chats.find_one({"chat_id": int(chat_id_str)})
@@ -779,6 +866,7 @@ def main():
     app.add_handler(CommandHandler("menu", menu_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CommandHandler("config", config_cmd))
+    app.add_handler(CommandHandler("grupos", grupos_cmd))  # NOVO COMANDO REGISTRADO
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
