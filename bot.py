@@ -155,7 +155,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             video=video_escolhido,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
-            parse_mode="Markdown"
+            parse_mode="Markdown",
+            protect_content=True  # Bloqueia download e salvamento pelos três pontinhos
         )
     except Exception:
         # Fallback caso ocorra falha ao carregar o vídeo
@@ -190,6 +191,7 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=DONO_ID, text=msg_teste, parse_mode="Markdown")
     except Exception:
         pass
+
 
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
