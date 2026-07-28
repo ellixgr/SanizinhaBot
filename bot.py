@@ -52,13 +52,10 @@ except Exception as e:
 
 TEMPO_INICIAL = time.time()
 
-# Lista de fotos para sortear aleatoriamente no /start
-LISTA_FOTOS_START = [
-    "https://files.catbox.moe/0pw3k8.jpg",
-    "https://i.postimg.cc/65DS7z5X/IMG-20241011-200929-964.jpg",
-    "https://i.postimg.cc/qBtHzNXf/05120ef2666bf3bc086aee01e5c2c7d9.webp",
-    "https://i.postimg.cc/kGSHwtfL/IMG-20260724-075247-329.jpg",
-    "https://i.postimg.cc/NMHbwvTW/IMG-20260723-174237-953.jpg"
+# Lista de vídeos para sortear aleatoriamente no /start
+LISTA_VIDEOS_START = [
+    "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
+    "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
 ]
 
 ultimo_envio = {}          
@@ -150,17 +147,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Sorteia uma foto aleatória da lista
-    foto_escolhida = random.choice(LISTA_FOTOS_START)
+    # Sorteia um vídeo aleatório da lista
+    video_escolhido = random.choice(LISTA_VIDEOS_START)
     
     try:
-        await update.message.reply_photo(
-            photo=foto_escolhida,
+        await update.message.reply_video(
+            video=video_escolhido,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
     except Exception:
+        # Fallback caso ocorra falha ao carregar o vídeo
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -199,7 +197,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
-        "• `/start` - Inicia o bot, envia foto aleatória e exibe os planos\n"
+        "• `/start` - Inicia o bot, envia vídeo aleatório e exibe os planos\n"
         "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
         "• `/teste` - Testa o envio de dados\n"
         "• `/suporte` - Mostra o contato do suporte\n"
@@ -221,7 +219,7 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎛 **PAINEL DE CONTROLE - MENU DO DONO** 🎛\n\n"
         "Aqui estão absolutamente **TODOS** os comandos integrados e operacionais do bot:\n\n"
         "🟢 **Comandos de Usuários/Públicos:**\n"
-        "• `/start` - Inicia o bot, envia foto aleatória e os planos Pix.\n"
+        "• `/start` - Inicia o bot, envia vídeo aleatório e os planos Pix.\n"
         "• `/suporte` (ou `/suport`) - Mostra o contato direto da central de atendimento.\n\n"
         "👑 **Comandos Exclusivos do Dono:**\n"
         "• `/menu` - Abre este painel completo com todos os comandos.\n"
