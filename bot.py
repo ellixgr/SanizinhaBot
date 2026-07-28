@@ -4,6 +4,7 @@ import time
 import asyncio
 import requests
 import threading
+import random
 import re
 from flask import Flask
 from pymongo import MongoClient
@@ -50,7 +51,15 @@ except Exception as e:
     print(f"⚠️ Erro crítico ao conectar no MongoDB: {e}")
 
 TEMPO_INICIAL = time.time()
-FOTO_START = "https://files.catbox.moe/0pw3k8.jpg"
+
+# Lista de fotos para sortear aleatoriamente no /start
+LISTA_FOTOS_START = [
+    "https://files.catbox.moe/0pw3k8.jpg",
+    "https://i.postimg.cc/65DS7z5X/IMG-20241011-200929-964.jpg",
+    "https://i.postimg.cc/qBtHzNXf/05120ef2666bf3bc086aee01e5c2c7d9.webp",
+    "https://i.postimg.cc/kGSHwtfL/IMG-20260724-075247-329.jpg",
+    "https://i.postimg.cc/NMHbwvTW/IMG-20260723-174237-953.jpg"
+]
 
 ultimo_envio = {}          
 contador_spam = {}         
@@ -127,24 +136,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     texto_boas_vindas = (
-        "🔥 **SEJA BEM-VINDO AO CANAL EXCLUSIVO** 🇧🇷\n\n"
-        "✨ Tenha acesso completo a todo o nosso conteúdo diário atualizado em um só lugar:\n\n"
-        "📁 +130 mil mídias disponíveis (vídeos e fotos)\n"
-        "🚀 Atualizações diárias sem censura\n"
-        "💎 Material organizado e exclusivo\n\n"
+        "🔥 **𝐴𝑄𝑈𝐼 𝑇𝐸𝑀 𝑇𝑂𝐷𝑂𝑆 𝑂𝑆 𝐶𝑂𝑁𝑇𝐸𝑈𝐷𝑂𝑆** 🇧🇷\n\n"
+        "🤭🔥Tenha acesso completo a todo o nosso conteúdo atualizado em um só lugar:\n\n"
+        "📁 +2𝑚𝑖𝑙 mídias disponíveis (vídeos e fotos)\n"
         "👇 Escolha o seu plano abaixo para liberar o seu acesso:\n\n"
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,00 🔥", callback_data="comprar_2.00")],
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Sorteia uma foto aleatória da lista
+    foto_escolhida = random.choice(LISTA_FOTOS_START)
+    
     try:
         await update.message.reply_photo(
-            photo=FOTO_START,
+            photo=foto_escolhida,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
             parse_mode="Markdown"
@@ -188,7 +199,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         "📜 **LISTA DE COMANDOS DO BOT** 📜\n\n"
         "👤 **Comandos Disponíveis:**\n"
-        "• `/start` - Inicia o bot e exibe os planos\n"
+        "• `/start` - Inicia o bot, envia foto aleatória e exibe os planos\n"
         "• `/id` - Mostra o ID exato do grupo ou chat atual\n"
         "• `/teste` - Testa o envio de dados\n"
         "• `/suporte` - Mostra o contato do suporte\n"
@@ -210,7 +221,7 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎛 **PAINEL DE CONTROLE - MENU DO DONO** 🎛\n\n"
         "Aqui estão absolutamente **TODOS** os comandos integrados e operacionais do bot:\n\n"
         "🟢 **Comandos de Usuários/Públicos:**\n"
-        "• `/start` - Inicia o bot, exibe a imagem e os planos de assinatura Pix.\n"
+        "• `/start` - Inicia o bot, envia foto aleatória e os planos Pix.\n"
         "• `/suporte` (ou `/suport`) - Mostra o contato direto da central de atendimento.\n\n"
         "👑 **Comandos Exclusivos do Dono:**\n"
         "• `/menu` - Abre este painel completo com todos os comandos.\n"
@@ -288,7 +299,6 @@ async def grupos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         title = chat.get("title", f"Chat {chat_id}")
         tipo = chat.get("type", "group")
         emoji = "📢" if tipo == "channel" else "👥"
-        # Callback customizado para puxar os membros
         keyboard.append([InlineKeyboardButton(f"{emoji} {title}", callback_data=f"listar_membros_{chat_id}")])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -476,7 +486,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     
-    # NOVO: Handler para listar membros do grupo selecionado
     if data.startswith("listar_membros_"):
         chat_id_str = data.replace("listar_membros_", "")
         try:
@@ -493,7 +502,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_title = chat_data.get("title", "Grupo") if chat_data else "Grupo"
         chat_type = chat_data.get("type", "group") if chat_data else "group"
 
-        # Canais normais não permitem listar membros pela API do Telegram
         if chat_type == "channel":
             try:
                 await query.message.reply_text(
@@ -505,12 +513,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         try:
-            # Tenta pegar a contagem ou administrador caso queira, 
-            # Nota: A API oficial do Telegram (bot) não fornece um método direto para puxar 
-            # todos os membros comuns de um grupo de uma só vez (getChatMembers não existe).
-            # No entanto, podemos puxar administradores ou usar métodos alternativos se o bot registrar as interações.
-            # Vamos avisar o dono sobre essa limitação nativa do Telegram e listar os admins capturados:
-            
             admins = await context.bot.get_chat_administrators(chat_id=chat_id)
             
             resposta_membros = f"📋 **Membros / Admins do Grupo:** `{chat_title}`\n\n"
@@ -731,7 +733,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if payment_id not in pagamentos_notificados:
                     pagamentos_notificados.add(payment_id)
-                    plano_nome = "1 Dia 🔥 (R$ 2,00)" if valor_pago == 2.0 else "1 Semana (R$ 7,00)" if valor_pago == 7.0 else "1 Mês (R$ 20,00)" if valor_pago == 20.0 else "Permanente (R$ 60,00)" if valor_pago == 60.0 else f"Personalizado (R$ {valor_pago:.2f})"
+                    plano_nome = "1 Dia 🔥 (R$ 2,50)" if valor_pago == 2.5 else "1 Semana (R$ 7,00)" if valor_pago == 7.0 else "1 Mês (R$ 20,00)" if valor_pago == 20.0 else "Permanente (R$ 60,00)" if valor_pago == 60.0 else f"Personalizado (R$ {valor_pago:.2f})"
                     comprador = update.effective_user
                     relatorio_privado = (
                         f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
@@ -766,8 +768,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
             await query.message.reply_text("❌ Não foi possível verificar o pagamento no momento. Tente novamente em instantes.")
 
-    elif data == "renovar_2.00":
-        query.data = "comprar_2.00"
+    elif data == "renovar_2.50":
+        query.data = "comprar_2.50"
         await button_handler(update, context)
 
     elif data == "ver_outros_precos":
@@ -799,7 +801,7 @@ async def gerenciador_assinaturas(application):
                             "👇 Renove agora mesmo para continuar garantindo o seu acesso:"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("🔄 Continuar Assinado (R$ 2,00 - 1 Dia)", callback_data="renovar_2.00")],
+                            [InlineKeyboardButton("🔄 Continuar Assinado (R$ 2,50 - 1 Dia)", callback_data="renovar_2.50")],
                             [InlineKeyboardButton("💎 Ver Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -816,7 +818,7 @@ async def gerenciador_assinaturas(application):
                             "👇 Pague agora e continue com acesso liberado:"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("🔄 Continuar Assinado por R$ 2,00", callback_data="renovar_2.00")],
+                            [InlineKeyboardButton("🔄 Continuar Assinado por R$ 2,50", callback_data="renovar_2.50")],
                             [InlineKeyboardButton("📋 Ver Outros Preços", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -866,7 +868,7 @@ def main():
     app.add_handler(CommandHandler("menu", menu_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CommandHandler("config", config_cmd))
-    app.add_handler(CommandHandler("grupos", grupos_cmd))  # NOVO COMANDO REGISTRADO
+    app.add_handler(CommandHandler("grupos", grupos_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler(["suport", "suporte"], suporte_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
