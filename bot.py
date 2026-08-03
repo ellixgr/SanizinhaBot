@@ -36,7 +36,6 @@ CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", 0))
 
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# Conexão segura com parâmetros anti-timeout e anti-SSL handshake error
 try:
     mongo_client = MongoClient(
         MONGO_URI, 
@@ -52,7 +51,6 @@ except Exception as e:
 
 TEMPO_INICIAL = time.time()
 
-# Lista de vídeos para sortear aleatoriamente no /start
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
@@ -96,14 +94,16 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             if contador_spam[user_id] >= 8:
                 bloqueio_temporario[user_id] = agora + 300  
                 contador_spam[user_id] = 0
-                try:
-                    await context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text="⚠️ **Muitas mensagens enviadas rapidamente. Aguarde alguns instantes.**",
-                        parse_mode="Markdown"
-                    )
-                except Exception:
-                    pass
+                # ✅ SÓ ENVIA AVISO NO PRIVADO — NUNCA MAIS NO GRUPO!
+                if update.effective_chat.type == "private":
+                    try:
+                        await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text="⚠️ **Muitas mensagens enviadas rapidamente. Aguarde alguns instantes.**",
+                            parse_mode="Markdown"
+                        )
+                    except Exception:
+                        pass
                 raise ApplicationHandlerStop           
             raise ApplicationHandlerStop
             
@@ -143,11 +143,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Sorteia um vídeo aleatório da lista
     video_escolhido = random.choice(LISTA_VIDEOS_START)
     
     try:
@@ -156,10 +155,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
             parse_mode="Markdown",
-            protect_content=True  # Bloqueia download e salvamento pelos três pontinhos
+            protect_content=True
         )
     except Exception:
-        # Fallback caso ocorra falha ao carregar o vídeo
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -192,7 +190,6 @@ async def teste_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         pass
 
-
 async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -206,7 +203,7 @@ async def comandos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/comandos` - Mostra esta lista de comandos\n"
         "• `/ping` - Mostra a latência e o status da hospedagem\n"
         "• `/addusuario` - Adiciona um usuário manualmente com tempo flexível (m, h, d)\n"
-        "• `/delusuario` - Remove um usuário da base de clientes ativos\n"
+        "• `/delusuario` - Remove um usuário da lista de clientes ativos\n"
         "• `/clientes` - Exibe todos os clientes ativos no grupo e suas informações\n"
         "• `/config` - Gerencia grupos e canais conectados ao bot\n"
         "• `/grupos` - Mostra os grupos do bot e lista os IDs dos membros\n"
@@ -776,7 +773,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄ℕ𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
         ]
         await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
 
