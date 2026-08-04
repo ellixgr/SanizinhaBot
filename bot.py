@@ -30,7 +30,7 @@ def run_web():
     app_web.run(host="0.0.0.0", port=port)
 
 # ==============================================
-# ✅ SUAS CONFIGURAÇÕES — IGUAIS AO SEU
+# ✅ SUAS CONFIGURAÇÕES
 # ==============================================
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN")
@@ -38,14 +38,14 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# ✅ SEUS VÍDEOS DO START — IGUAIS AO SEU
+# ✅ DEIXEI OS LINKS MAS SE CONTINUAR DANDO ERRO, O BOT VAI RESPONDER COM TEXTO MESMO ASSIM
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
 ]
 
 # ==============================================
-# ✅ CONEXÃO BANCO — IGUAL AO SEU
+# ✅ CONEXÃO BANCO
 # ==============================================
 try:
     mongo_client = MongoClient(
@@ -68,7 +68,7 @@ bloqueio_temporario = {}
 pagamentos_notificados = set()
 
 # ==============================================
-# ✅ INTERCEPTADOR — IGUAL AO SEU
+# ✅ INTERCEPTADOR CORRIGIDO — NÃO BLOQUEIA /start E /suporte
 # ==============================================
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -77,14 +77,22 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
 
+    # ✅ DONO SEMPRE PASSA
     if user_id == DONO_ID:
         return
 
+    # ✅ COMANDOS PERMITIDOS — SEMPRE PASSAM!
+    COMANDOS_LIBERADOS = ['/start', '/suporte', '/suport', '/id', '/ping']
+    
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
-        if cmd not in ['/start', '/suporte', '/suport']:
+        if cmd in COMANDOS_LIBERADOS:
+            return  # ✅ DEIXA PASSAR! NÃO BLOQUEIA!
+        else:
+            # ❌ BLOQUEIA OUTROS COMANDOS
             raise ApplicationHandlerStop
 
+    # ✅ BLOQUEIO POR SPAM
     if user_id in bloqueio_temporario:
         if bloqueio_temporario[user_id] - agora > 0:
             raise ApplicationHandlerStop
@@ -117,7 +125,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     ultimo_envio[user_id] = agora
 
 # ==============================================
-# ✅ SALVA GRUPOS — IGUAL AO SEU
+# ✅ SALVA GRUPOS
 # ==============================================
 async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = update.my_chat_member
@@ -140,11 +148,12 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
             print(f"Erro ao atualizar chat no DB: {e}")
 
 # ==============================================
-# ✅ /START — COM SEUS VÍDEOS E SEUS PLANOS
+# ✅ /START — CORRIGIDO: SE VÍDEO FALHAR, RESPONDE COM TEXTO MESMO!
 # ==============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
+    
     texto_boas_vindas = (
         "🔥 **𝐴𝑄𝑈𝐼 𝑇𝐸𝑀 𝑇𝑂𝐷𝑂𝑆 𝑂𝑆 𝐶𝑂𝑁𝑇𝐸𝑈𝐷𝑂𝑆** 🇧🇷\n\n"
         "🤭🔥Tenha acesso completo a todo o nosso conteúdo atualizado em um só lugar:\n\n"
@@ -153,7 +162,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
 
-    # ✅ SEUS PLANOS — IGUAIS AO SEU
     keyboard = [
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
@@ -162,9 +170,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # ✅ ESCOLHE VÍDEO ALEATÓRIO DA SUA LISTA
     video_escolhido = random.choice(LISTA_VIDEOS_START)
 
+    # ✅ TENTA VÍDEO, SE FALHAR → MANDA TEXTO NORMAL
     try:
         await update.message.reply_video(
             video=video_escolhido,
@@ -174,11 +182,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             protect_content=True
         )
     except Exception as e:
-        print(f"⚠️ Erro ao enviar vídeo: {e}")
+        print(f"⚠️ Vídeo não pôde ser enviado: {e}")
+        # ✅ RESPONDE DE QUALQUER JEITO! NÃO DEIXA O USUÁRIO SEM RESPOSTA!
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 # ==============================================
-# ✅ COMANDOS DO DONO — IGUAIS AO SEU
+# ✅ COMANDOS DO DONO
 # ==============================================
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -317,7 +326,7 @@ async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erro ao remover usuário: {e}")
 
 # ==============================================
-# ✅ PAGAMENTO MERCADO PAGO — IGUAL AO SEU
+# ✅ PAGAMENTO MERCADO PAGO
 # ==============================================
 async def gerar_pagamento(valor, user, bot):
     url = "https://api.mercadopago.com/v1/payments"
@@ -362,7 +371,7 @@ async def verificar_pagamento(pag_id):
         return False, 0
 
 # ==============================================
-# ✅ BOTÕES — IGUAIS AO SEU
+# ✅ BOTÕES DE COMPRA
 # ==============================================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -403,7 +412,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if aprovado:
             await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
 
-            # ✅ DEFINE TEMPO PELO VALOR — IGUAL AO SEU
             if valor_pago == 2.50:
                 duracao_segundos = 86400
                 nome_plano = "1 Dia 🔥"
@@ -437,7 +445,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 upsert=True
             )
 
-            # ✅ GERA LINK DE CONVITE
             link_convite = None
             if CANAL_ALVO_ID != 0:
                 try:
@@ -460,7 +467,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
 
-            # ✅ AVISA O DONO DA VENDA
             if payment_id not in pagamentos_notificados:
                 pagamentos_notificados.add(payment_id)
                 comprador = update.effective_user
@@ -501,7 +507,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ==============================================
-# ✅ GERENCIADOR DE ASSINATURAS — IGUAL AO SEU
+# ✅ GERENCIADOR DE ASSINATURAS
 # ==============================================
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
@@ -515,7 +521,6 @@ async def gerenciador_assinaturas(application):
                 expira_em = cliente["expira_em"]
                 tempo_restante = expira_em - agora
 
-                # ⚠️ AVISA 1 DIA ANTES
                 if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
                     try:
                         msg = (
@@ -533,7 +538,6 @@ async def gerenciador_assinaturas(application):
                     except:
                         pass
 
-                # ⚠️ AVISA 20 MINUTOS ANTES
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
                         msg = (
@@ -551,7 +555,6 @@ async def gerenciador_assinaturas(application):
                     except:
                         pass
 
-                # ❌ EXPIROU → REMOVE
                 elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
@@ -577,7 +580,7 @@ def run_background_loop(application):
     loop.run_until_complete(gerenciador_assinaturas(application))
 
 # ==============================================
-# ✅ INICIO — IGUAL AO SEU
+# ✅ INICIO
 # ==============================================
 def main():
     threading.Thread(target=run_web, daemon=True).start()
@@ -596,7 +599,7 @@ def main():
     app.add_handler(CommandHandler("delusuario", delusuario_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("𝐓𝐎 𝐎𝐍 BB 😗")
+    print("✅ BOT ONLINE — /start e /suporte LIBERADOS!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
