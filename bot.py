@@ -38,7 +38,6 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# ✅ DEIXEI OS LINKS MAS SE CONTINUAR DANDO ERRO, O BOT VAI RESPONDER COM TEXTO MESMO ASSIM
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
@@ -61,14 +60,19 @@ except Exception as e:
     print(f"⚠️ Erro crítico ao conectar no MongoDB: {e}")
 
 TEMPO_INICIAL = time.time()
-ultimo_envio = {}
-contador_spam = {}
-usuarios_bloqueados = {}
-bloqueio_temporario = {}
+
+# ✅ ANTI-FLOD POR COMANDO
+ULTIMO_COMANDO = {}  # {user_id: {"/start": tempo, "/suporte": tempo}}
+CONTADOR_AVISOS_FLOD = {}
+BLOQUEIO_FLOD = {}
+TEMPO_LIMITE_COMANDO = 2  # ✅ 2 SEGUNDOS ENTRE CADA COMANDO
+MAX_AVISOS_FLOD = 5
+TEMPO_BLOQUEIO_FLOD = 600  # 10 minutos em segundos
+
 pagamentos_notificados = set()
 
 # ==============================================
-# ✅ INTERCEPTADOR CORRIGIDO — NÃO BLOQUEIA /start E /suporte
+# ✅ INTERCEPTADOR — ANTI-FLOD POR COMANDO CORRIGIDO
 # ==============================================
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -81,48 +85,59 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     if user_id == DONO_ID:
         return
 
-    # ✅ COMANDOS PERMITIDOS — SEMPRE PASSAM!
+    # ✅ SE ESTÁ BLOQUEADO POR FLOD
+    if user_id in BLOQUEIO_FLOD:
+        if BLOQUEIO_FLOD[user_id] > agora:
+            raise ApplicationHandlerStop
+        else:
+            del BLOQUEIO_FLOD[user_id]
+            CONTADOR_AVISOS_FLOD.pop(user_id, None)
+
     COMANDOS_LIBERADOS = ['/start', '/suporte', '/suport', '/id', '/ping']
     
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
+        
         if cmd in COMANDOS_LIBERADOS:
-            return  # ✅ DEIXA PASSAR! NÃO BLOQUEIA!
-        else:
-            # ❌ BLOQUEIA OUTROS COMANDOS
-            raise ApplicationHandlerStop
-
-    # ✅ BLOQUEIO POR SPAM
-    if user_id in bloqueio_temporario:
-        if bloqueio_temporario[user_id] - agora > 0:
-            raise ApplicationHandlerStop
-        else:
-            del bloqueio_temporario[user_id]
-            contador_spam.pop(user_id, None)
-
-    if user_id in usuarios_bloqueados:
-        raise ApplicationHandlerStop
-
-    if user_id in ultimo_envio:
-        if agora - ultimo_envio[user_id] < 1.2:
-            contador_spam[user_id] = contador_spam.get(user_id, 0) + 1
-            ultimo_envio[user_id] = agora
-            if contador_spam[user_id] >= 8:
-                bloqueio_temporario[user_id] = agora + 300
-                contador_spam[user_id] = 0
-                if update.effective_chat.type == "private":
-                    try:
-                        await context.bot.send_message(
-                            chat_id=update.effective_chat.id,
-                            text="⚠️ **Muitas mensagens enviadas rapidamente. Aguarde alguns instantes.**",
-                            parse_mode="Markdown"
-                        )
-                    except:
-                        pass
+            # ✅ ANTI-FLOD POR COMANDO ESPECÍFICO
+            if user_id not in ULTIMO_COMANDO:
+                ULTIMO_COMANDO[user_id] = {}
+            
+            ultimo = ULTIMO_COMANDO[user_id].get(cmd, 0)
+            if agora - ultimo < TEMPO_LIMITE_COMANDO:
+                # ⚠️ FLOD DETECTADO
+                CONTADOR_AVISOS_FLOD[user_id] = CONTADOR_AVISOS_FLOD.get(user_id, 0) + 1
+                avisos = CONTADOR_AVISOS_FLOD[user_id]
+                
+                if avisos >= MAX_AVISOS_FLOD:
+                    BLOQUEIO_FLOD[user_id] = agora + TEMPO_BLOQUEIO_FLOD
+                    CONTADOR_AVISOS_FLOD[user_id] = 0
+                    if update.effective_chat.type == "private":
+                        try:
+                            await context.bot.send_message(
+                                chat_id=update.effective_chat.id,
+                                text="🚫 **Você foi bloqueado por floodar!**\n\nTente novamente em 10 minutos.",
+                                parse_mode="Markdown"
+                            )
+                        except:
+                            pass
+                else:
+                    if update.effective_chat.type == "private":
+                        try:
+                            await context.bot.send_message(
+                                chat_id=update.effective_chat.id,
+                                text="⚠️ **É proibido flodar mensagens aqui!**\nSe continuar será bloqueado!",
+                                parse_mode="Markdown"
+                            )
+                        except:
+                            pass
                 raise ApplicationHandlerStop
+            
+            # ✅ ATUALIZA O TEMPO DO COMANDO
+            ULTIMO_COMANDO[user_id][cmd] = agora
+            return
+        else:
             raise ApplicationHandlerStop
-
-    ultimo_envio[user_id] = agora
 
 # ==============================================
 # ✅ SALVA GRUPOS
@@ -148,7 +163,7 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
             print(f"Erro ao atualizar chat no DB: {e}")
 
 # ==============================================
-# ✅ /START — CORRIGIDO: SE VÍDEO FALHAR, RESPONDE COM TEXTO MESMO!
+# ✅ /START — COM NOVO PLANO DE R$ 0,60 / 1 HORA
 # ==============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
@@ -162,7 +177,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
 
+    # ✅ ADICIONADO R$ 0,60 → 1 HORA DE ACESSO
     keyboard = [
+        [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
@@ -172,7 +189,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     video_escolhido = random.choice(LISTA_VIDEOS_START)
 
-    # ✅ TENTA VÍDEO, SE FALHAR → MANDA TEXTO NORMAL
     try:
         await update.message.reply_video(
             video=video_escolhido,
@@ -183,7 +199,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"⚠️ Vídeo não pôde ser enviado: {e}")
-        # ✅ RESPONDE DE QUALQUER JEITO! NÃO DEIXA O USUÁRIO SEM RESPOSTA!
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
 
 # ==============================================
@@ -371,7 +386,7 @@ async def verificar_pagamento(pag_id):
         return False, 0
 
 # ==============================================
-# ✅ BOTÕES DE COMPRA
+# ✅ BOTÕES DE COMPRA — COM R$ 0,60 / 1 HORA
 # ==============================================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -412,7 +427,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if aprovado:
             await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
 
-            if valor_pago == 2.50:
+            # ✅ TABELA DE PLANOS — INCLUINDO R$ 0,60 = 1 HORA
+            if valor_pago == 0.60:
+                duracao_segundos = 3600  # ✅ 1 HORA em segundos
+                nome_plano = "1 HORA ⚡"
+            elif valor_pago == 2.50:
                 duracao_segundos = 86400
                 nome_plano = "1 Dia 🔥"
             elif valor_pago == 7.00:
@@ -426,7 +445,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 nome_plano = "Permanente"
             else:
                 duracao_segundos = int(valor_pago) * 86400
-                nome_plano = f"Personalizado R$ {valor_pago:.2f}"
+                nome_plano = f"R$ {valor_pago:.2f}"
 
             user_id = update.effective_user.id
             tempo_expiracao = time.time() + duracao_segundos
@@ -500,6 +519,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif dados == "ver_outros_precos":
         keyboard = [
+            [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
+            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50", callback_data="comprar_2.50")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
             [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
@@ -507,7 +528,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ==============================================
-# ✅ GERENCIADOR DE ASSINATURAS
+# ✅ GERENCIADOR DE ASSINATURAS — FUNCIONA COM 1 HORA TAMBÉM
 # ==============================================
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
@@ -521,6 +542,7 @@ async def gerenciador_assinaturas(application):
                 expira_em = cliente["expira_em"]
                 tempo_restante = expira_em - agora
 
+                # ⚠️ AVISA 1 DIA ANTES
                 if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
                     try:
                         msg = (
@@ -530,7 +552,8 @@ async def gerenciador_assinaturas(application):
                             "👇 Renove agora mesmo para continuar garantindo o seu acesso:"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("🔄 Continuar Assinado (R$ 2,50 - 1 Dia)", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("⚡ Renovar 1 HORA (R$ 0,60)", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("🔄 Renovar 1 Dia (R$ 2,50)", callback_data="renovar_2.50")],
                             [InlineKeyboardButton("💎 Ver Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -538,6 +561,7 @@ async def gerenciador_assinaturas(application):
                     except:
                         pass
 
+                # ⚠️ AVISA 20 MINUTOS ANTES — FUNCIONA P/ 1H TAMBÉM
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
                         msg = (
@@ -547,7 +571,8 @@ async def gerenciador_assinaturas(application):
                             "👇 Pague agora e continue com acesso liberado:"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("🔄 Continuar Assinado por R$ 2,50", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("⚡ Renovar 1 HORA (R$ 0,60)", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("🔄 Renovar 1 Dia (R$ 2,50)", callback_data="renovar_2.50")],
                             [InlineKeyboardButton("📋 Ver Outros Preços", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -555,6 +580,7 @@ async def gerenciador_assinaturas(application):
                     except:
                         pass
 
+                # ❌ EXPIROU → REMOVE
                 elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
@@ -599,8 +625,8 @@ def main():
     app.add_handler(CommandHandler("delusuario", delusuario_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ BOT ONLINE — /start e /suporte LIBERADOS!")
+    print("✅ BOT ONLINE — R$ 0,60 / 1H + ANTI-FLOD ATIVADO!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
