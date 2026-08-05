@@ -39,7 +39,7 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# ⚠️ ATENÇÃO: URLs externas dão erro no Telegram! Substitua por file_id de vídeos enviados no bot
+# ⚠️ Substitua os links abaixo pelos file_id dos seus vídeos
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
@@ -79,7 +79,7 @@ pagamentos_notificados = set()
 def formatar_tempo_restante(segundos):
     if segundos <= 0:
         return "Expirado"
-    if segundos >= 315360000:  # ~10 anos = Permanente
+    if segundos >= 315360000:
         return "Permanente ♾️"
     dias = int(segundos // 86400)
     horas = int((segundos % 86400) // 3600)
@@ -94,7 +94,29 @@ def formatar_tempo_restante(segundos):
     return " ".join(partes) if partes else "Menos de 1m"
 
 # ==============================================
-# ✅ NOVO COMANDO /CLIENTES — LISTA COMPLETA
+# ✅ COMANDO /PEGARID — PEGAR FILE_ID DE VÍDEO
+# ==============================================
+async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+
+    if update.message and update.message.video:
+        file_id = update.message.video.file_id
+        duracao = update.message.video.duration
+        await update.message.reply_text(
+            f"✅ **FILE_ID DO VÍDEO:**\n\n`{file_id}`\n\n"
+            f"⏳ Duração: {duracao}s\n\n"
+            f"👉 Coloque esse código na lista LISTA_VIDEOS_START no lugar do link!",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text(
+            "⚠️ **Mande um vídeo e responda com `/pegarid`** para eu te mostrar o file_id!",
+            parse_mode="Markdown"
+        )
+
+# ==============================================
+# ✅ COMANDO /CLIENTES — SÓ DONO USA
 # ==============================================
 async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -117,14 +139,12 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tempo_restante = expira_em - agora
             tempo_str = formatar_tempo_restante(tempo_restante)
 
-            # Data limite formatada
             if expira_em >= 315360000 + agora:
                 data_limite = "Permanente"
             else:
                 dt = datetime.fromtimestamp(expira_em)
                 data_limite = dt.strftime("%d/%m/%Y às %H:%M")
 
-            # Valor pago e data de compra (se existirem)
             valor_pago = cli.get("valor_pago", "Não registrado")
             data_compra_ts = cli.get("data_compra")
             data_compra = datetime.fromtimestamp(data_compra_ts).strftime("%d/%m/%Y às %H:%M") if data_compra_ts else "Não registrada"
@@ -146,7 +166,7 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erro ao listar clientes: {e}")
 
 # ==============================================
-# ✅ INTERCEPTADOR — ANTI-FLOD
+# ✅ INTERCEPTADOR — LIBERA SÓ /start E /suporte PARA OS OUTROS
 # ==============================================
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -155,9 +175,11 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
 
+    # ✅ DONO PASSA SEMPRE
     if user_id == DONO_ID:
         return
 
+    # ✅ ANTI-FLOD
     if user_id in BLOQUEIO_FLOD:
         if BLOQUEIO_FLOD[user_id] > agora:
             raise ApplicationHandlerStop
@@ -165,7 +187,8 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             del BLOQUEIO_FLOD[user_id]
             CONTADOR_AVISOS_FLOD.pop(user_id, None)
 
-    COMANDOS_LIBERADOS = ['/start', '/suporte', '/suport', '/id', '/ping']
+    # ✅ SÓ LIBERA ESSES COMANDOS PARA MEMBROS
+    COMANDOS_LIBERADOS = ['/start', '/suporte', '/suport']
     
     if update.message and update.message.text and update.message.text.startswith('/'):
         cmd = update.message.text.split()[0].split('@')[0].lower()
@@ -206,6 +229,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             ULTIMO_COMANDO[user_id][cmd] = agora
             return
         else:
+            # ❌ QUALQUER OUTRO COMANDO → BOT IGNORA SEM RESPONDER
             raise ApplicationHandlerStop
 
 # ==============================================
@@ -303,7 +327,7 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🛠 **Central de Suporte**\n\n"
-        "Para tirar dúvidas ou resolver qualquer problema, entre em contato diretamente com o nosso suporte:\n\n"
+        "Para tirar dúvidas ou resolver qualquer problema, entre em contato com o nosso suporte:\n\n"
         "👉 **@Lyhhxv**",
         parse_mode="Markdown"
     )
@@ -670,7 +694,7 @@ def run_background_loop(application):
     loop.run_until_complete(gerenciador_assinaturas(application))
 
 # ==============================================
-# ✅ INICIO — COMANDO /CLIENTES REGISTRADO
+# ✅ INICIO — TODOS OS COMANDOS REGISTRADOS
 # ==============================================
 def main():
     threading.Thread(target=run_web, daemon=True).start()
@@ -682,15 +706,17 @@ def main():
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
     app.add_handler(ChatMemberHandler(verificar_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("suporte", suporte_cmd))
+    app.add_handler(CommandHandler("suport", suporte_cmd))
     app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
-    app.add_handler(CommandHandler(["suporte", "suport"], suporte_cmd))
+    app.add_handler(CommandHandler("pegarid", pegarid_cmd))   # ✅ PEGAR FILE_ID
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
     app.add_handler(CommandHandler("delusuario", delusuario_cmd))
-    app.add_handler(CommandHandler("clientes", clientes_cmd))  # ✅ NOVO COMANDO
+    app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ BOT ONLINE — COMANDO /CLIENTES DISPONÍVEL!")
+    print("✅ BOT ONLINE — /pegarid + RESTRIÇÃO ATIVADOS!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
