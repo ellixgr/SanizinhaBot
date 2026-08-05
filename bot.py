@@ -31,7 +31,7 @@ def run_web():
     app_web.run(host="0.0.0.0", port=port)
 
 # ==============================================
-# ✅ SUAS CONFIGURAÇÕES
+# ✅ SUAS CONFIGURAÇÕES — VIDEOS JÁ CADASTRADOS!
 # ==============================================
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN")
@@ -39,9 +39,15 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
+# ✅ TODOS OS 7 VIDEOS — SORTEA ALEATORIAMENTE
 LISTA_VIDEOS_START = [
-    "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
-    "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
+    "BAACAgEAAxkBAAIEaGpypkNQUJJljEnJb7HL6E8_jI9wAAKFBgACCyKZR-8RZtV8X4rJPQQ",
+    "BAACAgQAAxkDAAICGmpoPJTXgCHfxtZabyU-4BF-LQ2aAAIyCgACN9NMU1DMn3zufwakPQQ",
+    "BAACAgQAAxkDAAICHGpoPQABSIsmMhqbhyOF5T3dTtOPMQAC2AoAAsGPRVP2U4U5hzZfgD0E",
+    "BAACAgEAAxkBAAIEiGpyriREGTmCsDEL-K7HP20Lu4anAAKIBgACCyKZR-NXEURfyoGWPQQ",
+    "BAACAgEAAxkBAAIEi2pyrrUAAXpOCWe8aG_nf_8n0X927wACiQYAAgsimUdIi2LyBhmPoz0E",
+    "BAACAgEAAxkBAAIEjmpyrxiNAfhRdTuM-gL2QlzUVjRzAAKKBgACCyKZR5GXizEzidIiPQQ",
+    "BAACAgEAAxkBAAIElGpysAVDwH-LYNh9sODcX3lBl7O-AAKMBgACCyKZR3ERh8tK65nkPQQ"
 ]
 
 # ==============================================
@@ -92,7 +98,7 @@ def formatar_tempo_restante(segundos):
     return " ".join(partes) if partes else "Menos de 1m"
 
 # ==============================================
-# ✅ COMANDO /PEGARID — FUNCIONA RESPONDENDO O VIDEO!
+# ✅ COMANDO /PEGARID — FUNCIONA RESPONDENDO O VIDEO
 # ==============================================
 async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -100,7 +106,7 @@ async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     mensagem = update.message
 
-    # ✅ JEITO 1: Comando RESPONDENDO o vídeo
+    # ✅ RESPONDEU O VÍDEO COM O COMANDO → FUNCIONA!
     if mensagem.reply_to_message and mensagem.reply_to_message.video:
         video = mensagem.reply_to_message.video
         file_id = video.file_id
@@ -109,12 +115,12 @@ async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ FILE_ID DO VIDEO:\n\n"
             f"{file_id}\n\n"
             f"Duração: {duracao}s\n\n"
-            "Coloque esse codigo na lista LISTA_VIDEOS_START no lugar do link!"
+            "Coloque esse codigo na lista LISTA_VIDEOS_START!"
         )
         await mensagem.reply_text(texto)
         return
 
-    # ✅ JEITO 2: Vídeo + comando na MESMA mensagem
+    # ✅ MANDOU VÍDEO + COMANDO JUNTOS → FUNCIONA!
     if mensagem.video:
         file_id = mensagem.video.file_id
         duracao = mensagem.video.duration
@@ -122,17 +128,14 @@ async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ FILE_ID DO VIDEO:\n\n"
             f"{file_id}\n\n"
             f"Duração: {duracao}s\n\n"
-            "Coloque esse codigo na lista LISTA_VIDEOS_START no lugar do link!"
+            "Coloque esse codigo na lista LISTA_VIDEOS_START!"
         )
         await mensagem.reply_text(texto)
         return
 
-    # ❌ Nenhum vídeo encontrado
     await mensagem.reply_text(
-        "⚠️ RESPONDA um vídeo com /pegarid ou mande o vídeo junto com o comando!\n\n"
-        "👉 Anexe o vídeo → responda com /pegarid"
+        "⚠️ RESPONDA um vídeo com /pegarid ou mande o vídeo junto com o comando!"
     )
-
 
 # ==============================================
 # ✅ COMANDO /CLIENTES
@@ -269,7 +272,7 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
             print(f"Erro ao atualizar chat no DB: {e}")
 
 # ==============================================
-# ✅ /START
+# ✅ /START — SORTEA VIDEO ALEATORIO
 # ==============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
@@ -292,6 +295,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    # ✅ ESCOLHE 1 VIDEO ALEATORIO DA LISTA DE 7
     video_escolhido = random.choice(LISTA_VIDEOS_START)
 
     try:
@@ -610,7 +614,7 @@ def main():
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("BOT ONLINE — CORRIGIDO!")
+    print("BOT ONLINE — 7 VIDEOS ALEATORIOS!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
