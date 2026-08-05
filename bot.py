@@ -39,7 +39,6 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# ⚠️ Substitua os links abaixo pelos file_id dos seus vídeos
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
@@ -63,7 +62,6 @@ except Exception as e:
 
 TEMPO_INICIAL = time.time()
 
-# ✅ ANTI-FLOD POR COMANDO
 ULTIMO_COMANDO = {}
 CONTADOR_AVISOS_FLOD = {}
 BLOQUEIO_FLOD = {}
@@ -74,7 +72,7 @@ TEMPO_BLOQUEIO_FLOD = 600
 pagamentos_notificados = set()
 
 # ==============================================
-# ✅ FUNÇÃO AUXILIAR: FORMATAR TEMPO RESTANTE
+# ✅ FUNÇÃO AUXILIAR
 # ==============================================
 def formatar_tempo_restante(segundos):
     if segundos <= 0:
@@ -94,7 +92,7 @@ def formatar_tempo_restante(segundos):
     return " ".join(partes) if partes else "Menos de 1m"
 
 # ==============================================
-# ✅ COMANDO /PEGARID — PEGAR FILE_ID DE VÍDEO
+# ✅ COMANDO /PEGARID — CORRIGIDO SEM ERRO DE MARKDOWN
 # ==============================================
 async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -103,20 +101,21 @@ async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.video:
         file_id = update.message.video.file_id
         duracao = update.message.video.duration
-        await update.message.reply_text(
-            f"✅ **FILE_ID DO VÍDEO:**\n\n`{file_id}`\n\n"
-            f"⏳ Duração: {duracao}s\n\n"
-            f"👉 Coloque esse código na lista LISTA_VIDEOS_START no lugar do link!",
-            parse_mode="Markdown"
+        # ⚠️ TEXTO CORRIGIDO: SEM MARKDOWN QUEBRADO
+        texto = (
+            "✅ FILE_ID DO VIDEO:\n\n"
+            f"{file_id}\n\n"
+            f"Duração: {duracao}s\n\n"
+            "Coloque esse codigo na lista LISTA_VIDEOS_START no lugar do link!"
         )
+        await update.message.reply_text(texto)
     else:
         await update.message.reply_text(
-            "⚠️ **Mande um vídeo e responda com `/pegarid`** para eu te mostrar o file_id!",
-            parse_mode="Markdown"
+            "⚠️ Mande um video e responda com /pegarid para eu te mostrar o file_id!"
         )
 
 # ==============================================
-# ✅ COMANDO /CLIENTES — SÓ DONO USA
+# ✅ COMANDO /CLIENTES — CORRIGIDO
 # ==============================================
 async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -127,46 +126,46 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clientes = list(collection_clientes.find({}))
 
         if not clientes:
-            await update.message.reply_text("📋 **Nenhum cliente cadastrado no momento.**", parse_mode="Markdown")
+            await update.message.reply_text("📋 Nenhum cliente cadastrado no momento.")
             return
 
-        texto = f"📋 **LISTA DE CLIENTES ATIVOS ({len(clientes)}):**\n\n"
+        texto = f"📋 LISTA DE CLIENTES ATIVOS ({len(clientes)}):\n\n"
 
         for idx, cli in enumerate(clientes, 1):
             user_id = cli.get("user_id", "?")
-            nome = cli.get("nome", "Não informado")
+            nome = cli.get("nome", "Nao informado")
             expira_em = cli.get("expira_em", 0)
             tempo_restante = expira_em - agora
             tempo_str = formatar_tempo_restante(tempo_restante)
 
-            if expira_em >= 315360000 + agora:
+            if tempo_str == "Permanente ♾️":
                 data_limite = "Permanente"
             else:
                 dt = datetime.fromtimestamp(expira_em)
-                data_limite = dt.strftime("%d/%m/%Y às %H:%M")
+                data_limite = dt.strftime("%d/%m/%Y as %H:%M")
 
-            valor_pago = cli.get("valor_pago", "Não registrado")
+            valor_pago = cli.get("valor_pago", "Sem registro")
             data_compra_ts = cli.get("data_compra")
-            data_compra = datetime.fromtimestamp(data_compra_ts).strftime("%d/%m/%Y às %H:%M") if data_compra_ts else "Não registrada"
-            username = cli.get("username", "Não informado")
+            data_compra = datetime.fromtimestamp(data_compra_ts).strftime("%d/%m/%Y as %H:%M") if data_compra_ts else "Sem registro"
+            username = cli.get("username", "Sem registro")
 
             texto += (
-                f"🔹 **{idx}.** {nome}\n"
-                f"🆔 **ID:** `{user_id}`\n"
-                f"👤 **@:** {username}\n"
-                f"💰 **Valor Pago:** R$ {valor_pago}\n"
-                f"📅 **Pagamento:** {data_compra}\n"
-                f"⏳ **Expira em:** {tempo_str}\n"
-                f"📆 **Limite:** {data_limite}\n\n"
+                f"{idx}. {nome}\n"
+                f"ID: {user_id}\n"
+                f"@: {username}\n"
+                f"Valor Pago: R$ {valor_pago}\n"
+                f"Pagamento: {data_compra}\n"
+                f"Expira em: {tempo_str}\n"
+                f"Limite: {data_limite}\n\n"
             )
 
-        await update.message.reply_text(texto, parse_mode="Markdown")
+        await update.message.reply_text(texto)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Erro ao listar clientes: {e}")
 
 # ==============================================
-# ✅ INTERCEPTADOR — LIBERA SÓ /start E /suporte PARA OS OUTROS
+# ✅ INTERCEPTADOR
 # ==============================================
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -175,11 +174,9 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
 
-    # ✅ DONO PASSA SEMPRE
     if user_id == DONO_ID:
         return
 
-    # ✅ ANTI-FLOD
     if user_id in BLOQUEIO_FLOD:
         if BLOQUEIO_FLOD[user_id] > agora:
             raise ApplicationHandlerStop
@@ -187,7 +184,6 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             del BLOQUEIO_FLOD[user_id]
             CONTADOR_AVISOS_FLOD.pop(user_id, None)
 
-    # ✅ SÓ LIBERA ESSES COMANDOS PARA MEMBROS
     COMANDOS_LIBERADOS = ['/start', '/suporte', '/suport']
     
     if update.message and update.message.text and update.message.text.startswith('/'):
@@ -209,8 +205,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                         try:
                             await context.bot.send_message(
                                 chat_id=update.effective_chat.id,
-                                text="🚫 **Você foi bloqueado por floodar!**\n\nTente novamente em 10 minutos.",
-                                parse_mode="Markdown"
+                                text="Bloqueado por floodar! Tente novamente em 10 minutos."
                             )
                         except:
                             pass
@@ -219,8 +214,7 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                         try:
                             await context.bot.send_message(
                                 chat_id=update.effective_chat.id,
-                                text="⚠️ **É proibido flodar mensagens aqui!**\nSe continuar será bloqueado!",
-                                parse_mode="Markdown"
+                                text="Cuidado! Nao envie muitos comandos seguidos."
                             )
                         except:
                             pass
@@ -229,7 +223,6 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
             ULTIMO_COMANDO[user_id][cmd] = agora
             return
         else:
-            # ❌ QUALQUER OUTRO COMANDO → BOT IGNORA SEM RESPONDER
             raise ApplicationHandlerStop
 
 # ==============================================
@@ -263,19 +256,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     texto_boas_vindas = (
-        "🔥 **𝐴𝑄𝑈𝐼 𝑇𝐸𝑀 𝑇𝑂𝐷𝑂𝑆 𝑂𝑆 𝐶𝑂𝑁𝑇𝐸𝑈𝐷𝑂𝑆** 🇧🇷\n\n"
-        "🤭🔥Tenha acesso completo a todo o nosso conteúdo atualizado em um só lugar:\n\n"
-        "📁 +2𝑚𝑖𝑙 mídias disponíveis (vídeos e fotos)\n"
-        "👇 Escolha o seu plano abaixo para liberar o seu acesso:\n\n"
-        "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
+        "AQUI TEM TODOS OS CONTEUDOS\n\n"
+        "Tenha acesso completo a todo o nosso conteudo atualizado em um so lugar:\n\n"
+        "Mais de 2 mil midias disponiveis (videos e fotos)\n"
+        "Escolha o seu plano abaixo para liberar o seu acesso:\n\n"
+        "Precisa de ajuda? Fale com o suporte: @Lyhhxv"
     )
 
     keyboard = [
-        [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("1 HORA -> R$ 0,60", callback_data="comprar_0.60")],
+        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 2,50", callback_data="comprar_2.50")],
+        [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 7,00", callback_data="comprar_7.00")],
+        [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 20,00", callback_data="comprar_20.00")],
+        [InlineKeyboardButton("ACESSO PERMANENTE -> R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -286,12 +279,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             video=video_escolhido,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
-            parse_mode="Markdown",
             protect_content=True
         )
     except Exception as e:
-        print(f"⚠️ Vídeo não pôde ser enviado: {e}")
-        await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup, parse_mode="Markdown")
+        print(f"Video nao enviado: {e}")
+        await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup)
 
 # ==============================================
 # ✅ COMANDOS DO DONO
@@ -302,36 +294,37 @@ async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
     resposta = (
-        f"📊 **INFORMAÇÕES DE ID:**\n\n"
-        f"💬 **Nome do Chat:** {chat.title if chat.title else 'Privado'}\n"
-        f"🆔 **ID deste Chat/Grupo:** `{chat.id}`\n"
-        f"👤 **Seu ID de Usuário:** `{user.id}`"
+        "INFORMACOES DE ID:\n\n"
+        f"Nome do Chat: {chat.title if chat.title else 'Privado'}\n"
+        f"ID deste Chat/Grupo: {chat.id}\n"
+        f"Seu ID de Usuario: {user.id}"
     )
-    await update.message.reply_text(resposta, parse_mode="Markdown")
+    await update.message.reply_text(resposta)
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
     inicio = time.time()
-    msg = await update.message.reply_text("pong 🏓...")
+    msg = await update.message.reply_text("pong...")
     latencia = int((time.time() - inicio) * 1000)
     uptime = int(time.time() - TEMPO_INICIAL)
     resposta = (
-        f"🏓 **PONG! Informações do Sistema:**\n\n"
-        f"⚡ **Latência do Bot:** `{latencia}ms`\n"
-        f"⏳ **Uptime:** `{uptime // 3600}h {(uptime % 3600) // 60}m {uptime % 60}s`\n"
-        f"🧠 **Memória RAM:** `512 MB (Render Cloud)`"
+        "PONG! Informacoes do Sistema:\n\n"
+        f"Latencia: {latencia}ms\n"
+        f"Tempo online: {uptime // 3600}h {(uptime % 3600) // 60}m {uptime % 60}s\n"
+        "RAM: 512 MB"
     )
-    await msg.edit_text(resposta, parse_mode="Markdown")
+    await msg.edit_text(resposta)
 
 async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🛠 **Central de Suporte**\n\n"
-        "Para tirar dúvidas ou resolver qualquer problema, entre em contato com o nosso suporte:\n\n"
-        "👉 **@Lyhhxv**",
-        parse_mode="Markdown"
+        "Central de Suporte\n\n"
+        "Contate: @Lyhhxv"
     )
 
+# ==============================================
+# ✅ COMANDO /ADDUSUARIO — CORRIGIDO! AGORA FUNCIONA COMO DEVE
+# ==============================================
 async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -339,81 +332,103 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if len(args) < 2:
         await update.message.reply_text(
-            "⚠️ Use corretamente:\n"
-            "• `/addusuario <id> plano 2 / 50m` (minutos)\n"
-            "• `/addusuario <id> plano 2 / 2h` (horas)\n"
-            "• `/addusuario <id> plano 2 / 3d` (dias)\n"
-            "• `/addusuario <id> plano 7` (dias padrão)",
-            parse_mode="Markdown"
+            "Use assim:\n"
+            "/addusuario <ID> <valor> <tempo_opcional>\n\n"
+            "Exemplos:\n"
+            "/addusuario 123456 0.60 30m   -> comprou ha 30min, expira em 1h do inicio\n"
+            "/addusuario 123456 0.60       -> 1h a partir de agora\n"
+            "/addusuario 123456 2.50 12h   -> comprou ha 12h, expira em 1 dia\n"
+            "/addusuario 123456 60.00      -> Permanente\n"
+            "/addusuario 123456 60c 30m    -> 60 centavos, 30min atrasado"
         )
         return
 
     try:
         user_id = int(args[0])
-        resto_texto = "".join(args[1:]).lower()
-
-        duracao_segundos = 86400
-        tempo_str_formatado = ""
-
-        match_m = re.search(r'(\d+)m', resto_texto)
-        match_h = re.search(r'(\d+)h', resto_texto)
-        match_d = re.search(r'(\d+)d', resto_texto)
-
-        if match_m:
-            qtd_minutos = int(match_m.group(1))
-            duracao_segundos = qtd_minutos * 60
-            tempo_str_formatado = f"{qtd_minutos} minuto(s)"
-        elif match_h:
-            qtd_horas = int(match_h.group(1))
-            duracao_segundos = qtd_horas * 3600
-            tempo_str_formatado = f"{qtd_horas} hora(s)"
-        elif match_d:
-            qtd_dias = int(match_d.group(1))
-            duracao_segundos = qtd_dias * 86400
-            tempo_str_formatado = f"{qtd_dias} dia(s)"
+        valor_texto = args[1].strip().lower()
+        
+        # ====== PARSE DO VALOR ======
+        valor = 0.0
+        if 'c' in valor_texto:
+            centavos = re.sub(r'[^0-9]', '', valor_texto)
+            valor = int(centavos) / 100.0 if centavos else 0.0
         else:
-            plano_arg = args[1].lower()
-            if plano_arg.startswith("plano"):
-                if len(args) < 3:
-                    await update.message.reply_text("⚠️ Informe o valor do plano. Ex: `/addusuario 837382929 plano 2`", parse_mode="Markdown")
-                    return
-                dias_valor = int(re.sub(r'[^0-9]', '', args[2]) or '1')
-            else:
-                dias_valor = int(re.sub(r'[^0-9]', '', plano_arg) or '1')
+            valor_limpo = re.sub(r'[^0-9.]', '', valor_texto)
+            valor = float(valor_limpo) if valor_limpo else 0.0
 
-            if dias_valor == 7:
-                duracao_segundos = 86400 * 7
-            elif dias_valor == 20:
-                duracao_segundos = 86400 * 30
-            elif dias_valor == 60:
-                duracao_segundos = 86400 * 365 * 10
-            elif dias_valor == 2:
-                duracao_segundos = 86400 * 1
-            else:
-                duracao_segundos = 86400 * dias_valor
-            tempo_str_formatado = f"{dias_valor} dia(s)"
+        # ====== DEFINE DURACAO PELO VALOR ======
+        if abs(valor - 0.60) < 0.01:
+            duracao_total = 3600
+            nome_plano = "1 Hora"
+        elif abs(valor - 2.50) < 0.01:
+            duracao_total = 86400
+            nome_plano = "1 Dia"
+        elif abs(valor - 7.00) < 0.01:
+            duracao_total = 86400 * 7
+            nome_plano = "1 Semana"
+        elif abs(valor - 20.00) < 0.01:
+            duracao_total = 86400 * 30
+            nome_plano = "1 Mes"
+        elif abs(valor - 60.00) < 0.01:
+            duracao_total = 86400 * 365 * 10
+            nome_plano = "Permanente"
+        else:
+            duracao_total = int(valor * 86400)
+            nome_plano = f"R$ {valor:.2f}"
 
-        tempo_expiracao = time.time() + duracao_segundos
+        # ====== AJUSTA TEMPO SE INFORMADO (quanto tempo atrasado) ======
+        tempo_decorrido = 0
+        if len(args) >= 3:
+            tempo_texto = args[2].lower()
+            m = re.search(r'(\d+)m', tempo_texto)
+            h = re.search(r'(\d+)h', tempo_texto)
+            d = re.search(r'(\d+)d', tempo_texto)
+            if m:
+                tempo_decorrido = int(m.group(1)) * 60
+            elif h:
+                tempo_decorrido = int(h.group(1)) * 3600
+            elif d:
+                tempo_decorrido = int(d.group(1)) * 86400
 
+        # ====== CALCULA EXPIRACAO CORRETAMENTE ======
+        tempo_restante = duracao_total - tempo_decorrido
+        if tempo_restante < 0:
+            tempo_restante = 0
+
+        agora = time.time()
+        expira_em = agora + tempo_restante
+        data_compra = agora - tempo_decorrido  # DATA DA COMPRA REAL!
+
+        # ====== SALVA NO BANCO ======
         collection_clientes.update_one(
             {"user_id": user_id},
             {
                 "$set": {
                     "user_id": user_id,
                     "nome": "Adicionado Manualmente",
-                    "username": "Não informado",
-                    "expira_em": tempo_expiracao,
-                    "valor_pago": "0,00 (Admin)",
-                    "data_compra": time.time(),
+                    "username": "Nao informado",
+                    "expira_em": expira_em,
+                    "valor_pago": f"{valor:.2f}",
+                    "data_compra": data_compra,
                     "aviso_1dia_enviado": False,
                     "aviso_20min_enviado": False
                 }
             },
             upsert=True
         )
-        await update.message.reply_text(f"✅ Usuário `{user_id}` adicionado com sucesso por `{tempo_str_formatado}`!", parse_mode="Markdown")
+
+        data_compra_str = datetime.fromtimestamp(data_compra).strftime("%d/%m/%Y as %H:%M")
+        expira_str = formatar_tempo_restante(expira_em - agora)
+        await update.message.reply_text(
+            f"✅ Usuario {user_id} adicionado!\n"
+            f"Plano: {nome_plano}\n"
+            f"Valor: R$ {valor:.2f}\n"
+            f"Compra em: {data_compra_str}\n"
+            f"Tempo restante: {expira_str}"
+        )
+
     except Exception as e:
-        await update.message.reply_text(f"❌ Erro ao adicionar usuário: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
 
 async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -421,7 +436,7 @@ async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     args = context.args
     if not args:
-        await update.message.reply_text("⚠️ Use: `/delusuario <id_usuario>`", parse_mode="Markdown")
+        await update.message.reply_text("Use: /delusuario <ID>")
         return
 
     try:
@@ -429,11 +444,11 @@ async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         resultado = collection_clientes.delete_one({"user_id": user_id})
 
         if resultado.deleted_count > 0:
-            await update.message.reply_text(f"✅ O usuário `{user_id}` foi removido da lista de clientes com sucesso!", parse_mode="Markdown")
+            await update.message.reply_text(f"✅ Usuario {user_id} removido!")
         else:
-            await update.message.reply_text(f"⚠️ O usuário `{user_id}` não foi encontrado na base de dados de clientes.", parse_mode="Markdown")
+            await update.message.reply_text(f"Usuario {user_id} nao encontrado.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Erro ao remover usuário: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
 
 # ==============================================
 # ✅ PAGAMENTO MERCADO PAGO
@@ -462,11 +477,11 @@ async def gerar_pagamento(valor, user, bot):
             qr = dados.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code", "")
             return True, dados["id"], qr
         else:
-            print(f"❌ ERRO MP: {resp.status_code} | {resp.text[:300]}")
+            print(f"ERRO MP: {resp.status_code} | {resp.text[:300]}")
             return False, None, f"Erro API: {resp.status_code}"
     except Exception as e:
-        print(f"❌ ERRO CONEXÃO MP: {e}")
-        return False, None, f"Erro de conexão: {str(e)}"
+        print(f"ERRO CONEXAO MP: {e}")
+        return False, None, f"Erro de conexao: {str(e)}"
 
 async def verificar_pagamento(pag_id):
     url = f"https://api.mercadopago.com/v1/payments/{pag_id}"
@@ -492,10 +507,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if dados.startswith("comprar_"):
         valor = float(dados.split("_")[1])
         try:
-            await query.edit_message_caption(caption="⏳ Gerando seu PIX, aguarde um instante...", reply_markup=None)
+            await query.edit_message_caption(caption="Gerando seu PIX, aguarde...", reply_markup=None)
         except:
             try:
-                await query.edit_message_text("⏳ Gerando seu PIX, aguarde um instante...")
+                await query.edit_message_text("Gerando seu PIX, aguarde...")
             except:
                 pass
 
@@ -504,38 +519,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ok:
             msg_completa = (
-                f"✅ **PIX Gerado com Sucesso!**\n\n"
-                f"💰 **Valor:** R$ {valor:.2f}\n\n"
-                f"📋 **Código Pix Copia e Cola:**\n`{qr}`"
+                "PIX Gerado com Sucesso!\n\n"
+                f"Valor: R$ {valor:.2f}\n\n"
+                f"Codigo Pix Copia e Cola:\n{qr}"
             )
             keyboard_final = [
-                [InlineKeyboardButton("📋 Copiar Código Pix", copy_text=dict(text=qr))],
-                [InlineKeyboardButton("🔄 Verificar Pagamento", callback_data=f"check_{pag_id}")]
+                [InlineKeyboardButton("Copiar Codigo Pix", copy_text=dict(text=qr))],
+                [InlineKeyboardButton("Verificar Pagamento", callback_data=f"check_{pag_id}")]
             ]
-            await query.message.reply_text(msg_completa, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard_final))
+            await query.message.reply_text(msg_completa, reply_markup=InlineKeyboardMarkup(keyboard_final))
         else:
-            await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n{qr}", parse_mode="Markdown")
+            await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
 
     elif dados.startswith("check_"):
         payment_id = dados.split("_")[1]
         aprovado, valor_pago = await verificar_pagamento(payment_id)
 
         if aprovado:
-            await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
+            await query.answer("Pagamento Aprovado!", show_alert=True)
 
-            if valor_pago == 0.60:
+            if abs(valor_pago - 0.60) < 0.01:
                 duracao_segundos = 3600
-                nome_plano = "1 HORA ⚡"
-            elif valor_pago == 2.50:
+                nome_plano = "1 Hora"
+            elif abs(valor_pago - 2.50) < 0.01:
                 duracao_segundos = 86400
-                nome_plano = "1 Dia 🔥"
-            elif valor_pago == 7.00:
+                nome_plano = "1 Dia"
+            elif abs(valor_pago - 7.00) < 0.01:
                 duracao_segundos = 86400 * 7
                 nome_plano = "1 Semana"
-            elif valor_pago == 20.00:
+            elif abs(valor_pago - 20.00) < 0.01:
                 duracao_segundos = 86400 * 30
-                nome_plano = "1 Mês"
-            elif valor_pago == 60.00:
+                nome_plano = "1 Mes"
+            elif abs(valor_pago - 60.00) < 0.01:
                 duracao_segundos = 86400 * 365 * 10
                 nome_plano = "Permanente"
             else:
@@ -574,40 +589,36 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     link_convite = convite.invite_link
                 except Exception as e:
-                    print(f"⚠️ Erro ao gerar link: {e}")
+                    print(f"Erro ao gerar link: {e}")
 
-            texto_link = f"Aqui está o seu link de acesso exclusivo:\n{link_convite}" if link_convite else "⚠️ Contate o suporte (@Lyhhxv)"
+            texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
 
             await query.message.reply_text(
-                f"🎉 **Pagamento Aprovado!**\n\n"
-                f"✅ Plano: **{nome_plano}**\n"
-                f"💰 Valor: **R$ {valor_pago:.2f}**\n\n{texto_link}",
-                parse_mode="Markdown"
+                f"Pagamento Aprovado!\n\n"
+                f"Plano: {nome_plano}\n"
+                f"Valor: R$ {valor_pago:.2f}\n\n{texto_link}"
             )
 
             if payment_id not in pagamentos_notificados:
                 pagamentos_notificados.add(payment_id)
                 comprador = update.effective_user
                 relatorio = (
-                    f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
-                    f"👤 **Cliente:** {comprador.first_name or 'Sem nome'}\n"
-                    f"🔗 **Username:** @{comprador.username if comprador.username else 'Sem @'}\n"
-                    f"🆔 **ID:** `{comprador.id}`\n"
-                    f"💰 **Valor:** R$ {valor_pago:.2f}\n"
-                    f"📅 **Plano:** {nome_plano}\n"
-                    f"⏰ **Data/Hora:** {time.strftime('%d/%m/%Y às %H:%M:%S', time.localtime())}\n"
-                    f"🟢 **Status:** Aprovado"
+                    "NOVA ASSINATURA CONFIRMADA!\n\n"
+                    f"Cliente: {comprador.first_name or 'Sem nome'}\n"
+                    f"Usuario: @{comprador.username if comprador.username else 'Sem @'}\n"
+                    f"ID: {comprador.id}\n"
+                    f"Valor: R$ {valor_pago:.2f}\n"
+                    f"Plano: {nome_plano}\n"
+                    f"Data: {time.strftime('%d/%m/%Y as %H:%M:%S', time.localtime())}"
                 )
                 try:
-                    await context.bot.send_message(chat_id=DONO_ID, text=relatorio, parse_mode="Markdown")
+                    await context.bot.send_message(chat_id=DONO_ID, text=relatorio)
                 except:
                     pass
         else:
-            await query.answer("❌ Pagamento ainda não identificado!", show_alert=True)
+            await query.answer("Pagamento ainda nao identificado!", show_alert=True)
             await query.message.reply_text(
-                "⏳ **Pagamento ainda não identificado!**\n\n"
-                "Pague pelo Pix Copia e Cola. Se já pagou, aguarde e clique novamente.",
-                parse_mode="Markdown"
+                "Pagamento ainda nao identificado! Pague e aguarde, ou clique novamente."
             )
 
     elif dados == "renovar_2.50":
@@ -616,13 +627,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif dados == "ver_outros_precos":
         keyboard = [
-            [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
-            [InlineKeyboardButton("🔄 1 Dia → R$ 2,50", callback_data="comprar_2.50")],
-            [InlineKeyboardButton("📅 1 Semana → R$ 7,00", callback_data="comprar_7.00")],
-            [InlineKeyboardButton("📆 1 Mês → R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("♾️ Permanente → R$ 60,00", callback_data="comprar_60.00")]
+            [InlineKeyboardButton("1 HORA -> R$ 0,60", callback_data="comprar_0.60")],
+            [InlineKeyboardButton("1 Dia -> R$ 2,50", callback_data="comprar_2.50")],
+            [InlineKeyboardButton("1 Semana -> R$ 7,00", callback_data="comprar_7.00")],
+            [InlineKeyboardButton("1 Mes -> R$ 20,00", callback_data="comprar_20.00")],
+            [InlineKeyboardButton("Permanente -> R$ 60,00", callback_data="comprar_60.00")]
         ]
-        await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.reply_text("Escolha outro plano:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ==============================================
 # ✅ GERENCIADOR DE ASSINATURAS
@@ -641,32 +652,26 @@ async def gerenciador_assinaturas(application):
 
                 if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
                     try:
-                        msg = (
-                            "⚠️ **SEU PLANO VENCE AMANHÃ!** ⚠️\n\n"
-                            "Renove agora para não perder acesso!"
-                        )
+                        msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
-                            [InlineKeyboardButton("⚡ Renovar 1H (R$0,60)", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("🔄 Renovar 1Dia (R$2,50)", callback_data="renovar_2.50")],
-                            [InlineKeyboardButton("💎 Outros Planos", callback_data="ver_outros_precos")]
+                            [InlineKeyboardButton("Renovar 1H R$0,60", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("Renovar 1Dia R$2,50", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
-                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_1dia_enviado": True}})
                     except:
                         pass
 
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
-                        msg = (
-                            "🚨 **SEU PLANO EXPIRA EM MINUTOS!** 🚨\n\n"
-                            "Renove AGORA para não perder acesso!"
-                        )
+                        msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
-                            [InlineKeyboardButton("⚡ Renovar 1H (R$0,60)", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("🔄 Renovar 1Dia (R$2,50)", callback_data="renovar_2.50")],
-                            [InlineKeyboardButton("💎 Outros Planos", callback_data="ver_outros_precos")]
+                            [InlineKeyboardButton("Renovar 1H R$0,60", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("Renovar 1Dia R$2,50", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
-                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                        await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_20min_enviado": True}})
                     except:
                         pass
@@ -677,8 +682,7 @@ async def gerenciador_assinaturas(application):
                         await application.bot.unban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
                         await application.bot.send_message(
                             chat_id=user_id,
-                            text="❌ **Seu plano expirou!**\n\nUse /start e compre um novo plano.",
-                            parse_mode="Markdown"
+                            text="Seu plano expirou! Use /start e compre um novo."
                         )
                     except:
                         pass
@@ -694,7 +698,7 @@ def run_background_loop(application):
     loop.run_until_complete(gerenciador_assinaturas(application))
 
 # ==============================================
-# ✅ INICIO — TODOS OS COMANDOS REGISTRADOS
+# ✅ INICIO
 # ==============================================
 def main():
     threading.Thread(target=run_web, daemon=True).start()
@@ -710,13 +714,13 @@ def main():
     app.add_handler(CommandHandler("suport", suporte_cmd))
     app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
-    app.add_handler(CommandHandler("pegarid", pegarid_cmd))   # ✅ PEGAR FILE_ID
+    app.add_handler(CommandHandler("pegarid", pegarid_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
     app.add_handler(CommandHandler("delusuario", delusuario_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ BOT ONLINE — /pegarid + RESTRIÇÃO ATIVADOS!")
+    print("✅ BOT ONLINE — CORRIGIDO!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
