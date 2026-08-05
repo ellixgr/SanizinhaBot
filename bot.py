@@ -6,6 +6,7 @@ import requests
 import threading
 import random
 import re
+from datetime import datetime
 from flask import Flask
 from pymongo import MongoClient
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -38,6 +39,7 @@ DONO_ID = int(os.environ.get("DONO_ID", 7711945457))
 CANAL_ALVO_ID = int(os.environ.get("CANAL_ALVO_ID", -1004399892914))
 MONGO_URI = os.environ.get("MONGO_URI")
 
+# ⚠️ ATENÇÃO: URLs externas dão erro no Telegram! Substitua por file_id de vídeos enviados no bot
 LISTA_VIDEOS_START = [
     "https://ellixgr.github.io/x23wzp/VN20260728_020021.mp4",
     "https://ellixgr.github.io/x23wzp/VN20260728_015729.mp4"
@@ -62,17 +64,89 @@ except Exception as e:
 TEMPO_INICIAL = time.time()
 
 # ✅ ANTI-FLOD POR COMANDO
-ULTIMO_COMANDO = {}  # {user_id: {"/start": tempo, "/suporte": tempo}}
+ULTIMO_COMANDO = {}
 CONTADOR_AVISOS_FLOD = {}
 BLOQUEIO_FLOD = {}
-TEMPO_LIMITE_COMANDO = 2  # ✅ 2 SEGUNDOS ENTRE CADA COMANDO
+TEMPO_LIMITE_COMANDO = 2
 MAX_AVISOS_FLOD = 5
-TEMPO_BLOQUEIO_FLOD = 600  # 10 minutos em segundos
+TEMPO_BLOQUEIO_FLOD = 600
 
 pagamentos_notificados = set()
 
 # ==============================================
-# ✅ INTERCEPTADOR — ANTI-FLOD POR COMANDO CORRIGIDO
+# ✅ FUNÇÃO AUXILIAR: FORMATAR TEMPO RESTANTE
+# ==============================================
+def formatar_tempo_restante(segundos):
+    if segundos <= 0:
+        return "Expirado"
+    if segundos >= 315360000:  # ~10 anos = Permanente
+        return "Permanente ♾️"
+    dias = int(segundos // 86400)
+    horas = int((segundos % 86400) // 3600)
+    minutos = int((segundos % 3600) // 60)
+    partes = []
+    if dias > 0:
+        partes.append(f"{dias}d")
+    if horas > 0:
+        partes.append(f"{horas}h")
+    if minutos > 0:
+        partes.append(f"{minutos}m")
+    return " ".join(partes) if partes else "Menos de 1m"
+
+# ==============================================
+# ✅ NOVO COMANDO /CLIENTES — LISTA COMPLETA
+# ==============================================
+async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != DONO_ID:
+        return
+
+    try:
+        agora = time.time()
+        clientes = list(collection_clientes.find({}))
+
+        if not clientes:
+            await update.message.reply_text("📋 **Nenhum cliente cadastrado no momento.**", parse_mode="Markdown")
+            return
+
+        texto = f"📋 **LISTA DE CLIENTES ATIVOS ({len(clientes)}):**\n\n"
+
+        for idx, cli in enumerate(clientes, 1):
+            user_id = cli.get("user_id", "?")
+            nome = cli.get("nome", "Não informado")
+            expira_em = cli.get("expira_em", 0)
+            tempo_restante = expira_em - agora
+            tempo_str = formatar_tempo_restante(tempo_restante)
+
+            # Data limite formatada
+            if expira_em >= 315360000 + agora:
+                data_limite = "Permanente"
+            else:
+                dt = datetime.fromtimestamp(expira_em)
+                data_limite = dt.strftime("%d/%m/%Y às %H:%M")
+
+            # Valor pago e data de compra (se existirem)
+            valor_pago = cli.get("valor_pago", "Não registrado")
+            data_compra_ts = cli.get("data_compra")
+            data_compra = datetime.fromtimestamp(data_compra_ts).strftime("%d/%m/%Y às %H:%M") if data_compra_ts else "Não registrada"
+            username = cli.get("username", "Não informado")
+
+            texto += (
+                f"🔹 **{idx}.** {nome}\n"
+                f"🆔 **ID:** `{user_id}`\n"
+                f"👤 **@:** {username}\n"
+                f"💰 **Valor Pago:** R$ {valor_pago}\n"
+                f"📅 **Pagamento:** {data_compra}\n"
+                f"⏳ **Expira em:** {tempo_str}\n"
+                f"📆 **Limite:** {data_limite}\n\n"
+            )
+
+        await update.message.reply_text(texto, parse_mode="Markdown")
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao listar clientes: {e}")
+
+# ==============================================
+# ✅ INTERCEPTADOR — ANTI-FLOD
 # ==============================================
 async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -81,11 +155,9 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
     user_id = user.id
     agora = time.time()
 
-    # ✅ DONO SEMPRE PASSA
     if user_id == DONO_ID:
         return
 
-    # ✅ SE ESTÁ BLOQUEADO POR FLOD
     if user_id in BLOQUEIO_FLOD:
         if BLOQUEIO_FLOD[user_id] > agora:
             raise ApplicationHandlerStop
@@ -99,13 +171,11 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
         cmd = update.message.text.split()[0].split('@')[0].lower()
         
         if cmd in COMANDOS_LIBERADOS:
-            # ✅ ANTI-FLOD POR COMANDO ESPECÍFICO
             if user_id not in ULTIMO_COMANDO:
                 ULTIMO_COMANDO[user_id] = {}
             
             ultimo = ULTIMO_COMANDO[user_id].get(cmd, 0)
             if agora - ultimo < TEMPO_LIMITE_COMANDO:
-                # ⚠️ FLOD DETECTADO
                 CONTADOR_AVISOS_FLOD[user_id] = CONTADOR_AVISOS_FLOD.get(user_id, 0) + 1
                 avisos = CONTADOR_AVISOS_FLOD[user_id]
                 
@@ -133,7 +203,6 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
                             pass
                 raise ApplicationHandlerStop
             
-            # ✅ ATUALIZA O TEMPO DO COMANDO
             ULTIMO_COMANDO[user_id][cmd] = agora
             return
         else:
@@ -163,7 +232,7 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
             print(f"Erro ao atualizar chat no DB: {e}")
 
 # ==============================================
-# ✅ /START — COM NOVO PLANO DE R$ 0,60 / 1 HORA
+# ✅ /START
 # ==============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
@@ -177,7 +246,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 *Precisa de ajuda? Fale com o suporte:* @Lyhhxv"
     )
 
-    # ✅ ADICIONADO R$ 0,60 → 1 HORA DE ACESSO
     keyboard = [
         [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
         [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50 🔥", callback_data="comprar_2.50")],
@@ -309,7 +377,10 @@ async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "$set": {
                     "user_id": user_id,
                     "nome": "Adicionado Manualmente",
+                    "username": "Não informado",
                     "expira_em": tempo_expiracao,
+                    "valor_pago": "0,00 (Admin)",
+                    "data_compra": time.time(),
                     "aviso_1dia_enviado": False,
                     "aviso_20min_enviado": False
                 }
@@ -334,7 +405,7 @@ async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         resultado = collection_clientes.delete_one({"user_id": user_id})
 
         if resultado.deleted_count > 0:
-            await update.message.reply_text(f"✅ O usuário `{user_id}` foi removido da lista de clientes com sucesso! (Ele continua no grupo).", parse_mode="Markdown")
+            await update.message.reply_text(f"✅ O usuário `{user_id}` foi removido da lista de clientes com sucesso!", parse_mode="Markdown")
         else:
             await update.message.reply_text(f"⚠️ O usuário `{user_id}` não foi encontrado na base de dados de clientes.", parse_mode="Markdown")
     except Exception as e:
@@ -382,11 +453,12 @@ async def verificar_pagamento(pag_id):
             dados = resp.json()
             return dados.get("status") == "approved", dados.get("transaction_amount", 0)
         return False, 0
-    except:
+    except Exception as e:
+        print(f"Erro verificar pagamento: {e}")
         return False, 0
 
 # ==============================================
-# ✅ BOTÕES DE COMPRA — COM R$ 0,60 / 1 HORA
+# ✅ BOTÕES DE COMPRA
 # ==============================================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -427,9 +499,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if aprovado:
             await query.answer("🎉 Pagamento Aprovado!", show_alert=True)
 
-            # ✅ TABELA DE PLANOS — INCLUINDO R$ 0,60 = 1 HORA
             if valor_pago == 0.60:
-                duracao_segundos = 3600  # ✅ 1 HORA em segundos
+                duracao_segundos = 3600
                 nome_plano = "1 HORA ⚡"
             elif valor_pago == 2.50:
                 duracao_segundos = 86400
@@ -449,14 +520,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             user_id = update.effective_user.id
             tempo_expiracao = time.time() + duracao_segundos
+            user_obj = update.effective_user
+            username = f"@{user_obj.username}" if user_obj.username else "Sem @"
 
             collection_clientes.update_one(
                 {"user_id": user_id},
                 {
                     "$set": {
                         "user_id": user_id,
-                        "nome": update.effective_user.first_name or "Cliente",
+                        "nome": user_obj.first_name or "Cliente",
+                        "username": username,
                         "expira_em": tempo_expiracao,
+                        "valor_pago": f"{valor_pago:.2f}",
+                        "data_compra": time.time(),
                         "aviso_1dia_enviado": False,
                         "aviso_20min_enviado": False
                     }
@@ -476,13 +552,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception as e:
                     print(f"⚠️ Erro ao gerar link: {e}")
 
-            texto_link = f"Aqui está o seu link de acesso exclusivo:\n{link_convite}" if link_convite else "⚠️ Entre em contato com o suporte (@Lyhhxv) para liberar seu acesso."
+            texto_link = f"Aqui está o seu link de acesso exclusivo:\n{link_convite}" if link_convite else "⚠️ Contate o suporte (@Lyhhxv)"
 
             await query.message.reply_text(
-                f"🎉 **Pagamento Aprovado com Sucesso!**\n\n"
+                f"🎉 **Pagamento Aprovado!**\n\n"
                 f"✅ Plano: **{nome_plano}**\n"
-                f"💰 Valor: **R$ {valor_pago:.2f}**\n\n"
-                f"Muito obrigado pela compra!\n{texto_link}",
+                f"💰 Valor: **R$ {valor_pago:.2f}**\n\n{texto_link}",
                 parse_mode="Markdown"
             )
 
@@ -493,11 +568,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"🚨 **NOVA ASSINATURA CONFIRMADA!** 🚨\n\n"
                     f"👤 **Cliente:** {comprador.first_name or 'Sem nome'}\n"
                     f"🔗 **Username:** @{comprador.username if comprador.username else 'Sem @'}\n"
-                    f"🆔 **ID do Telegram:** `{comprador.id}`\n"
-                    f"💰 **Valor Pago:** R$ {valor_pago:.2f}\n"
-                    f"📅 **Plano Escolhido:** {nome_plano}\n"
+                    f"🆔 **ID:** `{comprador.id}`\n"
+                    f"💰 **Valor:** R$ {valor_pago:.2f}\n"
+                    f"📅 **Plano:** {nome_plano}\n"
                     f"⏰ **Data/Hora:** {time.strftime('%d/%m/%Y às %H:%M:%S', time.localtime())}\n"
-                    f"🧾 **ID do Pix:** `{payment_id}`\n"
                     f"🟢 **Status:** Aprovado"
                 )
                 try:
@@ -508,8 +582,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("❌ Pagamento ainda não identificado!", show_alert=True)
             await query.message.reply_text(
                 "⏳ **Pagamento ainda não identificado!**\n\n"
-                "Realize o pagamento no app do seu banco via Pix Copia e Cola. "
-                "Se você já pagou, aguarde alguns segundos e clique no botão novamente.",
+                "Pague pelo Pix Copia e Cola. Se já pagou, aguarde e clique novamente.",
                 parse_mode="Markdown"
             )
 
@@ -520,15 +593,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif dados == "ver_outros_precos":
         keyboard = [
             [InlineKeyboardButton("⚡ 1 HORA → R$ 0,60", callback_data="comprar_0.60")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐃𝐈𝐀 → R$ 2,50", callback_data="comprar_2.50")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐒𝐄𝐌𝐀𝐍𝐀 → R$ 7,00", callback_data="comprar_7.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐎𝐑 1 𝐌𝐄𝐒 → R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("𝐀𝐂𝐄𝐒𝐒𝐎 𝐏𝐄𝐑𝐌𝐀ℕ𝐄𝐍𝐓𝐄 → R$ 60,00", callback_data="comprar_60.00")]
+            [InlineKeyboardButton("🔄 1 Dia → R$ 2,50", callback_data="comprar_2.50")],
+            [InlineKeyboardButton("📅 1 Semana → R$ 7,00", callback_data="comprar_7.00")],
+            [InlineKeyboardButton("📆 1 Mês → R$ 20,00", callback_data="comprar_20.00")],
+            [InlineKeyboardButton("♾️ Permanente → R$ 60,00", callback_data="comprar_60.00")]
         ]
         await query.message.reply_text("Escolha outro plano abaixo:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ==============================================
-# ✅ GERENCIADOR DE ASSINATURAS — FUNCIONA COM 1 HORA TAMBÉM
+# ✅ GERENCIADOR DE ASSINATURAS
 # ==============================================
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
@@ -542,53 +615,45 @@ async def gerenciador_assinaturas(application):
                 expira_em = cliente["expira_em"]
                 tempo_restante = expira_em - agora
 
-                # ⚠️ AVISA 1 DIA ANTES
                 if 82800 <= tempo_restante <= 86400 and not cliente.get("aviso_1dia_enviado", False):
                     try:
                         msg = (
                             "⚠️ **SEU PLANO VENCE AMANHÃ!** ⚠️\n\n"
-                            "O seu acesso ao nosso canal exclusivo expira em breve.\n"
-                            "Não fique de fora das atualizações diárias!\n\n"
-                            "👇 Renove agora mesmo para continuar garantindo o seu acesso:"
+                            "Renove agora para não perder acesso!"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("⚡ Renovar 1 HORA (R$ 0,60)", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("🔄 Renovar 1 Dia (R$ 2,50)", callback_data="renovar_2.50")],
-                            [InlineKeyboardButton("💎 Ver Outros Planos", callback_data="ver_outros_precos")]
+                            [InlineKeyboardButton("⚡ Renovar 1H (R$0,60)", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("🔄 Renovar 1Dia (R$2,50)", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("💎 Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_1dia_enviado": True}})
                     except:
                         pass
 
-                # ⚠️ AVISA 20 MINUTOS ANTES — FUNCIONA P/ 1H TAMBÉM
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
                         msg = (
-                            "🚨 **ATENÇÃO: SEU PLANO EXPIRA EM POUCOS MINUTOS!** 🚨\n\n"
-                            "O seu tempo está acabando e você será removido do canal em breve.\n"
-                            "Garanta sua permanência agora para não perder nenhum conteúdo!\n\n"
-                            "👇 Pague agora e continue com acesso liberado:"
+                            "🚨 **SEU PLANO EXPIRA EM MINUTOS!** 🚨\n\n"
+                            "Renove AGORA para não perder acesso!"
                         )
                         keyboard = [
-                            [InlineKeyboardButton("⚡ Renovar 1 HORA (R$ 0,60)", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("🔄 Renovar 1 Dia (R$ 2,50)", callback_data="renovar_2.50")],
-                            [InlineKeyboardButton("📋 Ver Outros Preços", callback_data="ver_outros_precos")]
+                            [InlineKeyboardButton("⚡ Renovar 1H (R$0,60)", callback_data="comprar_0.60")],
+                            [InlineKeyboardButton("🔄 Renovar 1Dia (R$2,50)", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("💎 Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_20min_enviado": True}})
                     except:
                         pass
 
-                # ❌ EXPIROU → REMOVE
                 elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
                         await application.bot.unban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
                         await application.bot.send_message(
                             chat_id=user_id,
-                            text="❌ **Seu plano expirou e você foi removido do canal.**\n\n"
-                                 "Para entrar novamente, basta iniciar o bot com `/start` e adquirir um novo plano!",
+                            text="❌ **Seu plano expirou!**\n\nUse /start e compre um novo plano.",
                             parse_mode="Markdown"
                         )
                     except:
@@ -596,8 +661,7 @@ async def gerenciador_assinaturas(application):
                     collection_clientes.delete_one({"user_id": user_id})
 
         except Exception as e:
-            print(f"Erro no gerenciador: {e}")
-
+            print(f"Erro gerenciador: {e}")
         await asyncio.sleep(60)
 
 def run_background_loop(application):
@@ -606,7 +670,7 @@ def run_background_loop(application):
     loop.run_until_complete(gerenciador_assinaturas(application))
 
 # ==============================================
-# ✅ INICIO
+# ✅ INICIO — COMANDO /CLIENTES REGISTRADO
 # ==============================================
 def main():
     threading.Thread(target=run_web, daemon=True).start()
@@ -623,9 +687,10 @@ def main():
     app.add_handler(CommandHandler(["suporte", "suport"], suporte_cmd))
     app.add_handler(CommandHandler("addusuario", addusuario_cmd))
     app.add_handler(CommandHandler("delusuario", delusuario_cmd))
+    app.add_handler(CommandHandler("clientes", clientes_cmd))  # ✅ NOVO COMANDO
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ BOT ONLINE — R$ 0,60 / 1H + ANTI-FLOD ATIVADO!")
+    print("✅ BOT ONLINE — COMANDO /CLIENTES DISPONÍVEL!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
