@@ -92,27 +92,47 @@ def formatar_tempo_restante(segundos):
     return " ".join(partes) if partes else "Menos de 1m"
 
 # ==============================================
-# ✅ COMANDO /PEGARID — CORRIGIDO E FUNCIONANDO
+# ✅ COMANDO /PEGARID — FUNCIONA RESPONDENDO O VIDEO!
 # ==============================================
 async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
 
-    # ✅ Manda o vídeo + /pegarid na MESMA mensagem → funciona direto
-    if update.message and update.message.video:
-        file_id = update.message.video.file_id
-        duracao = update.message.video.duration
+    mensagem = update.message
+
+    # ✅ JEITO 1: Comando RESPONDENDO o vídeo
+    if mensagem.reply_to_message and mensagem.reply_to_message.video:
+        video = mensagem.reply_to_message.video
+        file_id = video.file_id
+        duracao = video.duration
         texto = (
             "✅ FILE_ID DO VIDEO:\n\n"
             f"{file_id}\n\n"
             f"Duração: {duracao}s\n\n"
             "Coloque esse codigo na lista LISTA_VIDEOS_START no lugar do link!"
         )
-        await update.message.reply_text(texto)
-    else:
-        await update.message.reply_text(
-            "⚠️ Mande o VIDEO junto com o comando /pegarid na mesma mensagem!"
+        await mensagem.reply_text(texto)
+        return
+
+    # ✅ JEITO 2: Vídeo + comando na MESMA mensagem
+    if mensagem.video:
+        file_id = mensagem.video.file_id
+        duracao = mensagem.video.duration
+        texto = (
+            "✅ FILE_ID DO VIDEO:\n\n"
+            f"{file_id}\n\n"
+            f"Duração: {duracao}s\n\n"
+            "Coloque esse codigo na lista LISTA_VIDEOS_START no lugar do link!"
         )
+        await mensagem.reply_text(texto)
+        return
+
+    # ❌ Nenhum vídeo encontrado
+    await mensagem.reply_text(
+        "⚠️ RESPONDA um vídeo com /pegarid ou mande o vídeo junto com o comando!\n\n"
+        "👉 Anexe o vídeo → responda com /pegarid"
+    )
+
 
 # ==============================================
 # ✅ COMANDO /CLIENTES
