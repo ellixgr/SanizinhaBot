@@ -58,7 +58,7 @@ try:
     collection_clientes = db["clientes"]
     collection_chats = db["chats_autorizados"]
 except Exception as e:
-    print(f"⚠️ Erro crítico ao conectar no MongoDB: {e}")
+    print(f"Erro crítico ao conectar no MongoDB: {e}")
 
 TEMPO_INICIAL = time.time()
 
@@ -78,7 +78,7 @@ def formatar_tempo_restante(segundos):
     if segundos <= 0:
         return "Expirado"
     if segundos >= 315360000:
-        return "Permanente ♾️"
+        return "Permanente"
     dias = int(segundos // 86400)
     horas = int((segundos % 86400) // 3600)
     minutos = int((segundos % 3600) // 60)
@@ -92,16 +92,16 @@ def formatar_tempo_restante(segundos):
     return " ".join(partes) if partes else "Menos de 1m"
 
 # ==============================================
-# ✅ COMANDO /PEGARID — CORRIGIDO SEM ERRO DE MARKDOWN
+# ✅ COMANDO /PEGARID — CORRIGIDO E FUNCIONANDO
 # ==============================================
 async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
 
+    # ✅ Manda o vídeo + /pegarid na MESMA mensagem → funciona direto
     if update.message and update.message.video:
         file_id = update.message.video.file_id
         duracao = update.message.video.duration
-        # ⚠️ TEXTO CORRIGIDO: SEM MARKDOWN QUEBRADO
         texto = (
             "✅ FILE_ID DO VIDEO:\n\n"
             f"{file_id}\n\n"
@@ -111,11 +111,11 @@ async def pegarid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(texto)
     else:
         await update.message.reply_text(
-            "⚠️ Mande um video e responda com /pegarid para eu te mostrar o file_id!"
+            "⚠️ Mande o VIDEO junto com o comando /pegarid na mesma mensagem!"
         )
 
 # ==============================================
-# ✅ COMANDO /CLIENTES — CORRIGIDO
+# ✅ COMANDO /CLIENTES
 # ==============================================
 async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -126,10 +126,10 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clientes = list(collection_clientes.find({}))
 
         if not clientes:
-            await update.message.reply_text("📋 Nenhum cliente cadastrado no momento.")
+            await update.message.reply_text("Nenhum cliente cadastrado no momento.")
             return
 
-        texto = f"📋 LISTA DE CLIENTES ATIVOS ({len(clientes)}):\n\n"
+        texto = f"LISTA DE CLIENTES ATIVOS ({len(clientes)}):\n\n"
 
         for idx, cli in enumerate(clientes, 1):
             user_id = cli.get("user_id", "?")
@@ -138,7 +138,7 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tempo_restante = expira_em - agora
             tempo_str = formatar_tempo_restante(tempo_restante)
 
-            if tempo_str == "Permanente ♾️":
+            if tempo_str == "Permanente":
                 data_limite = "Permanente"
             else:
                 dt = datetime.fromtimestamp(expira_em)
@@ -162,7 +162,7 @@ async def clientes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(texto)
 
     except Exception as e:
-        await update.message.reply_text(f"❌ Erro ao listar clientes: {e}")
+        await update.message.reply_text(f"Erro ao listar clientes: {e}")
 
 # ==============================================
 # ✅ INTERCEPTADOR
@@ -321,134 +321,6 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Central de Suporte\n\n"
         "Contate: @Lyhhxv"
     )
-
-# ==============================================
-# ✅ COMANDO /ADDUSUARIO — CORRIGIDO! AGORA FUNCIONA COMO DEVE
-# ==============================================
-async def addusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != DONO_ID:
-        return
-
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text(
-            "Use assim:\n"
-            "/addusuario <ID> <valor> <tempo_opcional>\n\n"
-            "Exemplos:\n"
-            "/addusuario 123456 0.60 30m   -> comprou ha 30min, expira em 1h do inicio\n"
-            "/addusuario 123456 0.60       -> 1h a partir de agora\n"
-            "/addusuario 123456 2.50 12h   -> comprou ha 12h, expira em 1 dia\n"
-            "/addusuario 123456 60.00      -> Permanente\n"
-            "/addusuario 123456 60c 30m    -> 60 centavos, 30min atrasado"
-        )
-        return
-
-    try:
-        user_id = int(args[0])
-        valor_texto = args[1].strip().lower()
-        
-        # ====== PARSE DO VALOR ======
-        valor = 0.0
-        if 'c' in valor_texto:
-            centavos = re.sub(r'[^0-9]', '', valor_texto)
-            valor = int(centavos) / 100.0 if centavos else 0.0
-        else:
-            valor_limpo = re.sub(r'[^0-9.]', '', valor_texto)
-            valor = float(valor_limpo) if valor_limpo else 0.0
-
-        # ====== DEFINE DURACAO PELO VALOR ======
-        if abs(valor - 0.60) < 0.01:
-            duracao_total = 3600
-            nome_plano = "1 Hora"
-        elif abs(valor - 2.50) < 0.01:
-            duracao_total = 86400
-            nome_plano = "1 Dia"
-        elif abs(valor - 7.00) < 0.01:
-            duracao_total = 86400 * 7
-            nome_plano = "1 Semana"
-        elif abs(valor - 20.00) < 0.01:
-            duracao_total = 86400 * 30
-            nome_plano = "1 Mes"
-        elif abs(valor - 60.00) < 0.01:
-            duracao_total = 86400 * 365 * 10
-            nome_plano = "Permanente"
-        else:
-            duracao_total = int(valor * 86400)
-            nome_plano = f"R$ {valor:.2f}"
-
-        # ====== AJUSTA TEMPO SE INFORMADO (quanto tempo atrasado) ======
-        tempo_decorrido = 0
-        if len(args) >= 3:
-            tempo_texto = args[2].lower()
-            m = re.search(r'(\d+)m', tempo_texto)
-            h = re.search(r'(\d+)h', tempo_texto)
-            d = re.search(r'(\d+)d', tempo_texto)
-            if m:
-                tempo_decorrido = int(m.group(1)) * 60
-            elif h:
-                tempo_decorrido = int(h.group(1)) * 3600
-            elif d:
-                tempo_decorrido = int(d.group(1)) * 86400
-
-        # ====== CALCULA EXPIRACAO CORRETAMENTE ======
-        tempo_restante = duracao_total - tempo_decorrido
-        if tempo_restante < 0:
-            tempo_restante = 0
-
-        agora = time.time()
-        expira_em = agora + tempo_restante
-        data_compra = agora - tempo_decorrido  # DATA DA COMPRA REAL!
-
-        # ====== SALVA NO BANCO ======
-        collection_clientes.update_one(
-            {"user_id": user_id},
-            {
-                "$set": {
-                    "user_id": user_id,
-                    "nome": "Adicionado Manualmente",
-                    "username": "Nao informado",
-                    "expira_em": expira_em,
-                    "valor_pago": f"{valor:.2f}",
-                    "data_compra": data_compra,
-                    "aviso_1dia_enviado": False,
-                    "aviso_20min_enviado": False
-                }
-            },
-            upsert=True
-        )
-
-        data_compra_str = datetime.fromtimestamp(data_compra).strftime("%d/%m/%Y as %H:%M")
-        expira_str = formatar_tempo_restante(expira_em - agora)
-        await update.message.reply_text(
-            f"✅ Usuario {user_id} adicionado!\n"
-            f"Plano: {nome_plano}\n"
-            f"Valor: R$ {valor:.2f}\n"
-            f"Compra em: {data_compra_str}\n"
-            f"Tempo restante: {expira_str}"
-        )
-
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erro: {e}")
-
-async def delusuario_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != DONO_ID:
-        return
-
-    args = context.args
-    if not args:
-        await update.message.reply_text("Use: /delusuario <ID>")
-        return
-
-    try:
-        user_id = int(args[0])
-        resultado = collection_clientes.delete_one({"user_id": user_id})
-
-        if resultado.deleted_count > 0:
-            await update.message.reply_text(f"✅ Usuario {user_id} removido!")
-        else:
-            await update.message.reply_text(f"Usuario {user_id} nao encontrado.")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erro: {e}")
 
 # ==============================================
 # ✅ PAGAMENTO MERCADO PAGO
@@ -715,12 +587,10 @@ def main():
     app.add_handler(CommandHandler("id", id_cmd))
     app.add_handler(CommandHandler("ping", ping_cmd))
     app.add_handler(CommandHandler("pegarid", pegarid_cmd))
-    app.add_handler(CommandHandler("addusuario", addusuario_cmd))
-    app.add_handler(CommandHandler("delusuario", delusuario_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ BOT ONLINE — CORRIGIDO!")
+    print("BOT ONLINE — CORRIGIDO!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
