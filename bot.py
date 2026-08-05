@@ -279,25 +279,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     texto_boas_vindas = (
-        "AQUI TEM TODOS OS CONTEUDOS\n\n"
+        "𝗧𝗢𝗗𝗢𝗦 𝗢𝗦 𝗖𝗢𝗡𝗧𝗘𝗨𝗗𝗢𝗦 𝗩𝗔𝗭𝗔𝗗0𝗦🤫 𝗗𝗢 𝗠𝗢𝗠𝗘𝗡𝗧𝗢🥵\n\n"
         "Tenha acesso completo a todo o nosso conteudo atualizado em um so lugar:\n\n"
-        "Mais de 2 mil midias disponiveis (videos e fotos)\n"
-        "Escolha o seu plano abaixo para liberar o seu acesso:\n\n"
-        "Precisa de ajuda? Fale com o suporte: @Lyhhxv"
+        "Mais de 20mil midias disponiveis (videos e fotos)\n"
+        "𝗘𝘀𝗰𝗼𝗹𝗵𝗮 𝘀𝗲𝘂 𝗽𝗹𝗮𝗻𝗼 𝗲 𝗲𝗻𝘁𝗿𝗲 𝗻𝗼 𝘃𝗶𝗽:\n\n"
+        "suporte: @Lyhhxv"
     )
 
     keyboard = [
-        [InlineKeyboardButton("1 HORA -> R$ 0,60", callback_data="comprar_0.60")],
+        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 0,60🔥", callback_data="comprar_0.60")],
         [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 2,50", callback_data="comprar_2.50")],
         [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 7,00", callback_data="comprar_7.00")],
         [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 20,00", callback_data="comprar_20.00")],
         [InlineKeyboardButton("ACESSO PERMANENTE -> R$ 60,00", callback_data="comprar_60.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # ✅ ESCOLHE 1 VIDEO ALEATORIO DA LISTA DE 7
     video_escolhido = random.choice(LISTA_VIDEOS_START)
-
     try:
         await update.message.reply_video(
             video=video_escolhido,
@@ -309,9 +306,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Video nao enviado: {e}")
         await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup)
 
-# ==============================================
-# ✅ COMANDOS DO DONO
-# ==============================================
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
         return
@@ -346,9 +340,7 @@ async def suporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Contate: @Lyhhxv"
     )
 
-# ==============================================
 # ✅ PAGAMENTO MERCADO PAGO
-# ==============================================
 async def gerar_pagamento(valor, user, bot):
     url = "https://api.mercadopago.com/v1/payments"
     headers = {
@@ -391,10 +383,7 @@ async def verificar_pagamento(pag_id):
     except Exception as e:
         print(f"Erro verificar pagamento: {e}")
         return False, 0
-
-# ==============================================
 # ✅ BOTÕES DE COMPRA
-# ==============================================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
