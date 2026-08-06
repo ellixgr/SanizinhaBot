@@ -239,11 +239,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "suporte: @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 0,60🔥", callback_data="comprar_0.60")],
-        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 2,50", callback_data="comprar_2.50")],
-        [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 7,00", callback_data="comprar_7.00")],
-        [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 20,00", callback_data="comprar_20.00")],
-        [InlineKeyboardButton("ACESSO PERMANENTE -> R$ 60,00", callback_data="comprar_60.00")]
+        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 1,00🔥", callback_data="comprar_1.00")],
+        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,00", callback_data="comprar_5.00")],
+        [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
+        [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30.00")],
+        [InlineKeyboardButton("ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     video_escolhido = random.choice(LISTA_VIDEOS_START)
@@ -370,19 +370,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         aprovado, valor_pago = await verificar_pagamento(payment_id)
         if aprovado:
             await query.answer("Pagamento Aprovado!", show_alert=True)
-            if abs(valor_pago - 0.60) < 0.01:
+            if abs(valor_pago - 1.00) < 0.01:
                 duracao_segundos = 3600
                 nome_plano = "1 Hora"
-            elif abs(valor_pago - 2.50) < 0.01:
+            elif abs(valor_pago - 5.00) < 0.01:
                 duracao_segundos = 86400
                 nome_plano = "1 Dia"
-            elif abs(valor_pago - 7.00) < 0.01:
+            elif abs(valor_pago - 10.00) < 0.01:
                 duracao_segundos = 86400 * 7
                 nome_plano = "1 Semana"
-            elif abs(valor_pago - 20.00) < 0.01:
+            elif abs(valor_pago - 30.00) < 0.01:
                 duracao_segundos = 86400 * 30
                 nome_plano = "1 Mes"
-            elif abs(valor_pago - 60.00) < 0.01:
+            elif abs(valor_pago - 55.00) < 0.01:
                 duracao_segundos = 86400 * 365 * 10
                 nome_plano = "Permanente"
             else:
@@ -452,16 +452,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Pagamento ainda nao identificado! Pague e aguarde, ou clique novamente."
             )
 
-    elif dados == "renovar_2.50":
-        query.data = "comprar_2.50"
+    elif dados == "renovar_5.00":
+        query.data = "comprar_5.00"
         await button_handler(update, context)
     elif dados == "ver_outros_precos":
         keyboard = [
-            [InlineKeyboardButton("1 HORA -> R$ 0,60", callback_data="comprar_0.60")],
-            [InlineKeyboardButton("1 Dia -> R$ 2,50", callback_data="comprar_2.50")],
-            [InlineKeyboardButton("1 Semana -> R$ 7,00", callback_data="comprar_7.00")],
-            [InlineKeyboardButton("1 Mes -> R$ 20,00", callback_data="comprar_20.00")],
-            [InlineKeyboardButton("Permanente -> R$ 60,00", callback_data="comprar_60.00")]
+            [InlineKeyboardButton("1 HORA -> R$ 1,00", callback_data="comprar_1.00")],
+            [InlineKeyboardButton("1 Dia -> R$ 5,00", callback_data="comprar_5.00")],
+            [InlineKeyboardButton("1 Semana -> R$ 10,00", callback_data="comprar_10.00")],
+            [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
+            [InlineKeyboardButton("Permanente -> R$ 55,00", callback_data="comprar_55.00")]
         ]
         await query.message.reply_text("Escolha outro plano:", reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -479,8 +479,8 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$0,60", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("Renovar 1Dia R$2,50", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -491,8 +491,8 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$0,60", callback_data="comprar_0.60")],
-                            [InlineKeyboardButton("Renovar 1Dia R$2,50", callback_data="renovar_2.50")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -533,7 +533,7 @@ def main():
     app.add_handler(CommandHandler("pegarid", pegarid_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
-    print("BOT ONLINE — CORRIGIDO!")
+    print("BOT ONLINE — VALORES ATUALIZADOS!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
