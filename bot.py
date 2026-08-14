@@ -279,8 +279,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "suporte: @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 1,00🔥", callback_data="comprar_1.00")],
-        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,00", callback_data="comprar_5.00")],
+        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 2,00🔥", callback_data="comprar_2.00")],
+        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,10", callback_data="comprar_5.10")],
         [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
         [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30.00")],
         [InlineKeyboardButton("💎ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")],
@@ -412,10 +412,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         aprovado, valor_pago = await verificar_pagamento(payment_id)
         if aprovado:
             await query.answer("Pagamento Aprovado!", show_alert=True)
-            if abs(valor_pago - 1.00) < 0.01:
+            if abs(valor_pago - 2.00) < 0.01:
                 duracao_segundos = 3600
                 nome_plano = "1 Hora"
-            elif abs(valor_pago - 5.00) < 0.01:
+            elif abs(valor_pago - 5.10) < 0.01:
                 duracao_segundos = 86400
                 nome_plano = "1 Dia"
             elif abs(valor_pago - 10.00) < 0.01:
@@ -494,13 +494,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Pagamento ainda nao identificado! Pague e aguarde, ou clique novamente."
             )
 
-    elif dados == "renovar_5.00":
-        query.data = "comprar_5.00"
+    elif dados == "renovar_5.10":
+        query.data = "comprar_5.10"
         await button_handler(update, context)
     elif dados == "ver_outros_precos":
         keyboard = [
-            [InlineKeyboardButton("1 HORA -> R$ 1,00", callback_data="comprar_1.00")],
-            [InlineKeyboardButton("1 Dia -> R$ 5,00", callback_data="comprar_5.00")],
+            [InlineKeyboardButton("1 HORA -> R$ 2,00", callback_data="comprar_2.00")],
+            [InlineKeyboardButton("1 Dia -> R$ 5,10", callback_data="comprar_5.10")],
             [InlineKeyboardButton("1 Semana -> R$ 10,00", callback_data="comprar_10.00")],
             [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
             [InlineKeyboardButton("Permanente -> R$ 55,00", callback_data="comprar_55.00")]
@@ -521,8 +521,8 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
-                            [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
+                            [InlineKeyboardButton("Renovar 1H R$2,00", callback_data="comprar_2.00")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="renovar_5.10")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -533,8 +533,8 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
-                            [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
+                            [InlineKeyboardButton("Renovar 1H R$2,00", callback_data="comprar_2.00")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="renovar_5.10")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -544,7 +544,7 @@ async def gerenciador_assinaturas(application):
                 elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
-                        await application.bot.unban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
+                        await application.bot.unban_chat_member(CANAL_ALVO_ID, user_id=user_id)
                         await application.bot.send_message(
                             chat_id=user_id,
                             text="Seu plano expirou! Use /start e compre um novo."
