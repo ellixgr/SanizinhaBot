@@ -72,9 +72,8 @@ TEMPO_LIMITE_COMANDO = 2
 MAX_AVISOS_FLOD = 5
 TEMPO_BLOQUEIO_FLOD = 600
 
-pagamentos_processando = {} # Guarda pagamentos sendo verificados automaticamente
+pagamentos_processando = {}
 
-# Função nova: verifica se é cliente ativo
 def eh_cliente_ativo(user_id: int) -> bool:
     if user_id == DONO_ID:
         return True
@@ -231,7 +230,6 @@ async def interceptador_universal(update: Update, context: ContextTypes.DEFAULT_
         else:
             raise ApplicationHandlerStop
 
-# Handler de bloqueio de entrada adicionado
 async def bloquear_nao_pagantes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     membro = update.chat_member
     if not membro or membro.chat.id != CANAL_ALVO_ID:
@@ -268,9 +266,8 @@ async def verificar_my_chat_member(update: Update, context: ContextTypes.DEFAULT
         except Exception as e:
             print(f"Erro ao atualizar chat no DB: {e}")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type != "private":
-        return
+# FUNÇÃO START REUTILIZÁVEL PARA VOLTAR AO MENU
+async def enviar_menu_start(chat_id, bot):
     texto_boas_vindas = (
         "TODOS OS CONTEUDOS VAZADOS 🤫 DO MOMENTO 🥵\n\n"
         "Tenha acesso completo a todo o nosso conteudo atualizado em um so lugar:\n\n"
@@ -289,16 +286,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     video_escolhido = random.choice(LISTA_VIDEOS_START)
     try:
-        await update.message.reply_video(
+        await bot.send_video(
+            chat_id=chat_id,
             video=video_escolhido,
             caption=texto_boas_vindas,
             reply_markup=reply_markup,
             protect_content=True
         )
     except Exception as e:
-        print(f"Video nao enviado: {e}")
-        await update.message.reply_text(texto_boas_vindas, reply_markup=reply_markup)
+        print(f"Video nao enviado no menu: {e}")
+        await bot.send_message(chat_id=chat_id, text=texto_boas_vindas, reply_markup=reply_markup)
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type != "private":
+        return
+    await enviar_menu_start(update.effective_chat.id, context.bot)
 
 async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != DONO_ID:
@@ -377,17 +379,15 @@ async def verificar_pagamento(pag_id):
         print(f"Erro verificar pagamento: {e}")
         return False, 0
 
-# TAREFA AUTOMÁTICA QUE VERIFICA PAGAMENTOS SOZINHA
 async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot, msg_pix):
     if pag_id in pagamentos_processando:
         return
     pagamentos_processando[pag_id] = True
 
     link_convite = None
-    for _ in range(30): # Tenta por 5 minutos
+    for _ in range(30):
         aprovado, valor_pago = await verificar_pagamento(pag_id)
         if aprovado:
-            # Define duração do plano
             if abs(valor - 2.00) < 0.01:
                 duracao_segundos = 3600
             elif abs(valor - 5.10) < 0.01:
@@ -406,7 +406,6 @@ async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot
             data_compra_rj = formatar_data_rj(data_compra)
             data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
 
-            # Salva cliente no banco
             user_obj = await bot.get_chat(user_id)
             username = f"@{user_obj.username}" if user_obj.username else "Sem @"
             collection_clientes.update_one(
@@ -426,7 +425,6 @@ async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot
                 upsert=True
             )
 
-            # Gera link do grupo
             if CANAL_ALVO_ID != 0:
                 try:
                     convite = await bot.create_chat_invite_link(
@@ -440,12 +438,10 @@ async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot
 
             texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
 
-            # ✅ APAGA A MENSAGEM DO PIX
             try:
                 await msg_pix.delete()
             except: pass
 
-            # ENVIA A MENSAGEM DE APROVAÇÃO DIRETO
             await bot.send_message(
                 chat_id=user_id,
                 text=f"✅ Pagamento Aprovado!\n\n"
@@ -454,7 +450,6 @@ async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot
                      f"Aproveite o grupo🤭🩷"
             )
 
-            # AVISA O DONO
             relatorio = (
                 "✅ NOVA ASSINATURA CONFIRMADA!\n\n"
                 f"Cliente: {user_obj.first_name or 'Sem nome'}\n"
@@ -470,7 +465,7 @@ async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot
             except: pass
             break
 
-        await asyncio.sleep(10) # Verifica a cada 10 segundos
+        await asyncio.sleep(10)
 
     pagamentos_processando.pop(pag_id, None)
 
@@ -487,7 +482,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
         if ok:
-            # DEFINE NOME DO PLANO
             if abs(valor - 2.00) < 0.01:
                 nome_plano = "1 Hora"
             elif abs(valor - 5.10) < 0.01:
@@ -501,7 +495,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 nome_plano = f"R$ {valor:.2f}"
 
-            # ✅ BOTÕES: COPIAR + VERIFICAR + OUTROS PLANOS (exatamente como pediu!)
             keyboard_final = [
                 [InlineKeyboardButton("📋 Copiar Código Pix", copy_text=dict(text=qr))],
                 [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")],
@@ -512,7 +505,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup(keyboard_final)
             )
 
-            # 🚀 INICIA A VERIFICAÇÃO AUTOMÁTICA EM SEGUNDO PLANO!
             asyncio.create_task(
                 verificar_pagamento_automatico(pag_id, user.id, valor, nome_plano, context.bot, msg_pix)
             )
@@ -524,20 +516,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payment_id = dados.split("_")[1]
         aprovado, valor_pago = await verificar_pagamento(payment_id)
         if aprovado:
-            await query.answer("✅ Pagamento Aprovado!", show_alert=True)
-            # A função automática já apaga e envia, então só avisa
+            await query.answer("✅ APROVADO! Acesso já liberado ✅", show_alert=True)
         else:
-            await query.answer("⏳ Ainda não aprovado! Aguarde ou tente novamente em instantes.", show_alert=True)
+            await query.answer("⏳ AINDA NÃO PAGO! Faça o pagamento e aguarde ⏳", show_alert=True)
 
     elif dados == "ver_outros_precos":
-        keyboard = [
-            [InlineKeyboardButton("1 HORA -> R$ 2,00", callback_data="comprar_2.00")],
-            [InlineKeyboardButton("1 Dia -> R$ 5,10", callback_data="comprar_5.10")],
-            [InlineKeyboardButton("1 Semana -> R$ 10,00", callback_data="comprar_10.00")],
-            [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
-            [InlineKeyboardButton("Permanente -> R$ 55,00", callback_data="comprar_55.00")]
-        ]
-        await query.message.reply_text("Escolha outro plano:", reply_markup=InlineKeyboardMarkup(keyboard))
+        # APAGA A MENSAGEM DO PIX E VOLTA AO MENU INICIAL COM VÍDEO NOVO
+        try:
+            await query.message.delete()
+        except: pass
+        await enviar_menu_start(update.effective_user.id, context.bot)
 
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
@@ -605,7 +593,7 @@ def main():
     app.add_handler(CommandHandler("pegarid", pegarid_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
-    print("✅ BOT ONLINE — TUDO COMO VOCÊ PEDIU!")
+    print("✅ BOT ONLINE — TUDO RESOLVIDO!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
