@@ -9,7 +9,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from flask import Flask
 from pymongo import MongoClient
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaVideo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -279,11 +279,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "suporte: @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 2,00🔥", callback_data="comprar_2.00")],
-[InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,00", callback_data="comprar_5.00")],
-[InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
-[InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30,00")],
-[InlineKeyboardButton("💎ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")]
+        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 1,00🔥", callback_data="comprar_1.00")],
+        [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,00", callback_data="comprar_5.00")],
+        [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
+        [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30.00")],
+        [InlineKeyboardButton("💎ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")],
+        [InlineKeyboardButton("𝑷𝑹𝑬𝑽𝑰𝑨𝑺 𝑮𝑹𝑨𝑻𝑰𝑺🔥", url="https://t.me/+Qmozi6YQ5dE1MDYx")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     video_escolhido = random.choice(LISTA_VIDEOS_START)
@@ -383,58 +384,52 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if dados.startswith("comprar_"):
         valor = float(dados.split("_")[1])
-        # Sempre edita a LEGENDA (funciona em vídeo)
         try:
-            await query.edit_message_caption(
-                caption="⏳ Gerando seu PIX, aguarde um instante...",
-                reply_markup=None
-            )
+            await query.edit_message_caption(caption="Gerando seu PIX, aguarde...", reply_markup=None)
         except:
-            pass  # Se falhar, não tenta transformar em texto, ignora o erro
+            try:
+                await query.edit_message_text("Gerando seu PIX, aguarde...")
+            except:
+                pass
         user = update.effective_user
         ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
         if ok:
             msg_completa = (
-                "✅ PIX Gerado com Sucesso!\n\n"
-                f"💸 Valor: R$ {valor:.2f}\n\n"
-                f"📋 Código Pix Copia e Cola:\n`{qr}`"
+                "PIX Gerado com Sucesso!\n\n"
+                f"Valor: R$ {valor:.2f}\n\n"
+                f"Codigo Pix Copia e Cola:\n{qr}"
             )
             keyboard_final = [
-                [InlineKeyboardButton("📋 Copiar Código", copy_text=dict(text=qr))],
-                [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")]
+                [InlineKeyboardButton("Copiar Codigo Pix", copy_text=dict(text=qr))],
+                [InlineKeyboardButton("Verificar Pagamento", callback_data=f"check_{pag_id}")]
             ]
-            await query.edit_message_text(
-                text=msg_completa,
-                reply_markup=InlineKeyboardMarkup(keyboard_final),
-                parse_mode="Markdown"
-            )
+            await query.message.reply_text(msg_completa, reply_markup=InlineKeyboardMarkup(keyboard_final))
         else:
-            await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n{qr}")
+            await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
 
     elif dados.startswith("check_"):
         payment_id = dados.split("_")[1]
         aprovado, valor_pago = await verificar_pagamento(payment_id)
         if aprovado:
             await query.answer("Pagamento Aprovado!", show_alert=True)
-            if abs(valor_pago - 2.00) < 0.01:
-                duracao_segundos = 3600  # 1 HORA
+            if abs(valor_pago - 1.00) < 0.01:
+                duracao_segundos = 3600
                 nome_plano = "1 Hora"
             elif abs(valor_pago - 5.00) < 0.01:
-                duracao_segundos = 86400  # 1 DIA
+                duracao_segundos = 86400
                 nome_plano = "1 Dia"
             elif abs(valor_pago - 10.00) < 0.01:
-                duracao_segundos = 86400 * 7  # 1 SEMANA
+                duracao_segundos = 86400 * 7
                 nome_plano = "1 Semana"
             elif abs(valor_pago - 30.00) < 0.01:
-                duracao_segundos = 86400 * 30  # 1 MÊS
-                nome_plano = "1 Mês"
+                duracao_segundos = 86400 * 30
+                nome_plano = "1 Mes"
             elif abs(valor_pago - 55.00) < 0.01:
-                duracao_segundos = 315360000  # PERMANENTE
+                duracao_segundos = 86400 * 365 * 10
                 nome_plano = "Permanente"
             else:
                 duracao_segundos = int(valor_pago) * 86400
                 nome_plano = f"R$ {valor_pago:.2f}"
-
             user_id = update.effective_user.id
             tempo_expiracao = time.time() + duracao_segundos
             user_obj = update.effective_user
@@ -470,7 +465,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
             data_compra_rj = formatar_data_rj(data_compra)
             data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
-            await query.edit_message_text(
+            await query.message.reply_text(
                 f"Pagamento Aprovado!\n\n"
                 f"Plano: {nome_plano}\n"
                 f"Valor: R$ {valor_pago:.2f}\n\n{texto_link}\n\n"
@@ -502,20 +497,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif dados == "renovar_5.00":
         query.data = "comprar_5.00"
         await button_handler(update, context)
-
     elif dados == "ver_outros_precos":
         keyboard = [
-            [InlineKeyboardButton("1 HORA -> R$ 2,00🔥", callback_data="comprar_2.00")],
+            [InlineKeyboardButton("1 HORA -> R$ 1,00", callback_data="comprar_1.00")],
             [InlineKeyboardButton("1 Dia -> R$ 5,00", callback_data="comprar_5.00")],
             [InlineKeyboardButton("1 Semana -> R$ 10,00", callback_data="comprar_10.00")],
             [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
             [InlineKeyboardButton("Permanente -> R$ 55,00", callback_data="comprar_55.00")]
         ]
-        await query.edit_message_media(
-            media=InputMediaVideo(media=random.choice(LISTA_VIDEOS_START), caption="𝗧𝗢𝗗𝗢𝗦 𝗢𝗦 𝗖𝗢𝗡𝗧𝗘𝗨𝗗𝗢𝗦 𝗩𝗔𝗭𝗔𝗗0𝗦🤫 𝗗𝗢 𝗠𝗢𝗠𝗘𝗡𝗧𝗢🥵\n\nEscolha seu plano VIP:"),
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
+        await query.message.reply_text("Escolha outro plano:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
@@ -531,7 +521,7 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$2,00🔥", callback_data="comprar_2.00")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
                             [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
@@ -543,7 +533,7 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$2,00🔥", callback_data="comprar_2.00")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
                             [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
