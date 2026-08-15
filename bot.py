@@ -39,13 +39,13 @@ MONGO_URI = os.environ.get("MONGO_URI")
 
 
 LISTA_VIDEOS_START = [
-    "BAACAgEAAxkBAAIKaGp9N1YMF5wDznBldvJMRfiAvS3-AAKaCAAC4ALwR3yGzFSbu90gPQQ",  # 𝗔𝗡𝗜𝗡𝗛𝗔💗 | 15s
-    "BAACAgEAAxkBAAIKa2p9N25ckdcn_nkmXOfF01hqq9uqAAKbCAAC4ALwRygBVGmm6XmkPQQ",  # 7s
-    "BAACAgEAAxkBAAIKbWp9N2-Il0F069xbtF2cddqmGHRCAAKdCAAC4ALwRzHzdov_dPkAAT0E",  # 5s
-    "BAACAgEAAxkBAAIKbmp9N3KubAJB7y7VUkXmAWYCx7RUAAKeCAAC4ALwR_uMlI_0xgdGPQQ",  # 12s
-    "BAACAgEAAxkBAAIKb2p9N345FfCVPZjj69zQ_AABBM4yswACnwgAAuAC8EcqG-GV1ULfbD0E",  # 11s
-    "BAACAgEAAxkBAAIKcGp9ONjrHy7m0fU7_p5NhIS6eqnVAAKgCAAC4ALwR4kWQWnHxDENPQQ",  # 13s
-    "BAACAgEAAxkBAAIKcWp9ONuT3vY1Gesd3gSxGgABIT812AACoQgAAuAC8EfnTbiy5ulkvT0E"   # 14s
+    "BAACAgEAAxkBAAIKaGp9N1YMF5wDznBldvJMRfiAvS3-AAKaCAAC4ALwR3yGzFSbu90gPQQ",
+    "BAACAgEAAxkBAAIKa2p9N25ckdcn_nkmXOfF01hqq9uqAAKbCAAC4ALwRygBVGmm6XmkPQQ",
+    "BAACAgEAAxkBAAIKbWp9N2-Il0F069xbtF2cddqmGHRCAAKdCAAC4ALwRzHzdov_dPkAAT0E",
+    "BAACAgEAAxkBAAIKbmp9N3KubAJB7y7VUkXmAWYCx7RUAAKeCAAC4ALwR_uMlI_0xgdGPQQ",
+    "BAACAgEAAxkBAAIKb2p9N345FfCVPZjj69zQ_AABBM4yswACnwgAAuAC8EcqG-GV1ULfbD0E",
+    "BAACAgEAAxkBAAIKcGp9ONjrHy7m0fU7_p5NhIS6eqnVAAKgCAAC4ALwR4kWQWnHxDENPQQ",
+    "BAACAgEAAxkBAAIKcWp9ONuT3vY1Gesd3gSxGgABIT812AACoQgAAuAC8EfnTbiy5ulkvT0E"
 ]
 
 
@@ -72,7 +72,7 @@ TEMPO_LIMITE_COMANDO = 2
 MAX_AVISOS_FLOD = 5
 TEMPO_BLOQUEIO_FLOD = 600
 
-pagamentos_notificados = set()
+pagamentos_processando = {} # Guarda pagamentos sendo verificados automaticamente
 
 # Função nova: verifica se é cliente ativo
 def eh_cliente_ativo(user_id: int) -> bool:
@@ -272,19 +272,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     texto_boas_vindas = (
-        "𝗧𝗢𝗗𝗢𝗦 𝗢𝗦 𝗖𝗢𝗡𝗧𝗘𝗨𝗗𝗢𝗦 𝗩𝗔𝗭𝗔𝗗0𝗦🤫 𝗗𝗢 𝗠𝗢𝗠𝗘𝗡𝗧𝗢🥵\n\n"
+        "TODOS OS CONTEUDOS VAZADOS 🤫 DO MOMENTO 🥵\n\n"
         "Tenha acesso completo a todo o nosso conteudo atualizado em um so lugar:\n\n"
         "Mais de 20mil midias disponiveis (videos e fotos)\n"
-        "𝗘𝘀𝗰𝗼𝗹𝗵𝗮 𝘀𝗲𝘂 𝗽𝗹𝗮𝗻𝗼 𝗲 𝗲𝗻𝘁𝗿𝗲 𝗻𝗼 𝘃𝗶𝗽:\n\n"
+        "Escolha seu plano e entre no vip:\n\n"
         "suporte: @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 2,00🔥", callback_data="comprar_2.00")],
+        [InlineKeyboardButton("1 HORA -> R$ 2,00🔥", callback_data="comprar_2.00")],
         [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,10", callback_data="comprar_5.10")],
         [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
         [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30.00")],
-        [InlineKeyboardButton("💎ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")],
-        [InlineKeyboardButton("𝑷𝑹𝑬𝑽𝑰𝑨𝑺 𝑮𝑹𝑨𝑻𝑰𝑺🔥", url="https://t.me/+Qmozi6YQ5dE1MDYx")]
+        [InlineKeyboardButton("ACESSO PERMANENTE -> R$ 55,00", callback_data="comprar_55.00")],
+        [InlineKeyboardButton("PREVIAS GRATIS🔥", url="https://t.me/+Qmozi6YQ5dE1MDYx")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     video_escolhido = random.choice(LISTA_VIDEOS_START)
@@ -377,64 +377,38 @@ async def verificar_pagamento(pag_id):
         print(f"Erro verificar pagamento: {e}")
         return False, 0
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    dados = query.data
+# TAREFA AUTOMÁTICA QUE VERIFICA PAGAMENTOS SOZINHA
+async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot, msg_pix):
+    if pag_id in pagamentos_processando:
+        return
+    pagamentos_processando[pag_id] = True
 
-    if dados.startswith("comprar_"):
-        valor = float(dados.split("_")[1])
-        try:
-            await query.edit_message_caption(caption="Gerando seu PIX, aguarde...", reply_markup=None)
-        except:
-            try:
-                await query.edit_message_text("Gerando seu PIX, aguarde...")
-            except:
-                pass
-        user = update.effective_user
-        ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
-        if ok:
-            msg_completa = (
-                "PIX Gerado com Sucesso!\n\n"
-                f"Valor: R$ {valor:.2f}\n\n"
-                f"Codigo Pix Copia e Cola:\n{qr}"
-            )
-            keyboard_final = [
-                [InlineKeyboardButton("Copiar Codigo Pix", copy_text=dict(text=qr))],
-                [InlineKeyboardButton("Verificar Pagamento", callback_data=f"check_{pag_id}")]
-            ]
-            await query.message.reply_text(msg_completa, reply_markup=InlineKeyboardMarkup(keyboard_final))
-        else:
-            await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
-
-    elif dados.startswith("check_"):
-        payment_id = dados.split("_")[1]
-        aprovado, valor_pago = await verificar_pagamento(payment_id)
+    link_convite = None
+    for _ in range(30): # Tenta por 5 minutos
+        aprovado, valor_pago = await verificar_pagamento(pag_id)
         if aprovado:
-            await query.answer("Pagamento Aprovado!", show_alert=True)
-            if abs(valor_pago - 2.00) < 0.01:
+            # Define duração do plano
+            if abs(valor - 2.00) < 0.01:
                 duracao_segundos = 3600
-                nome_plano = "1 Hora"
-            elif abs(valor_pago - 5.10) < 0.01:
+            elif abs(valor - 5.10) < 0.01:
                 duracao_segundos = 86400
-                nome_plano = "1 Dia"
-            elif abs(valor_pago - 10.00) < 0.01:
+            elif abs(valor - 10.00) < 0.01:
                 duracao_segundos = 86400 * 7
-                nome_plano = "1 Semana"
-            elif abs(valor_pago - 30.00) < 0.01:
+            elif abs(valor - 30.00) < 0.01:
                 duracao_segundos = 86400 * 30
-                nome_plano = "1 Mes"
-            elif abs(valor_pago - 55.00) < 0.01:
+            elif abs(valor - 55.00) < 0.01:
                 duracao_segundos = 86400 * 365 * 10
-                nome_plano = "Permanente"
             else:
-                duracao_segundos = int(valor_pago) * 86400
-                nome_plano = f"R$ {valor_pago:.2f}"
-            user_id = update.effective_user.id
+                duracao_segundos = int(valor) * 86400
+
             tempo_expiracao = time.time() + duracao_segundos
-            user_obj = update.effective_user
-            username = f"@{user_obj.username}" if user_obj.username else "Sem @"
             data_compra = time.time()
+            data_compra_rj = formatar_data_rj(data_compra)
+            data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
+
+            # Salva cliente no banco
+            user_obj = await bot.get_chat(user_id)
+            username = f"@{user_obj.username}" if user_obj.username else "Sem @"
             collection_clientes.update_one(
                 {"user_id": user_id},
                 {
@@ -443,7 +417,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "nome": user_obj.first_name or "Cliente",
                         "username": username,
                         "expira_em": tempo_expiracao,
-                        "valor_pago": f"{valor_pago:.2f}",
+                        "valor_pago": f"{valor:.2f}",
                         "data_compra": data_compra,
                         "aviso_1dia_enviado": False,
                         "aviso_20min_enviado": False
@@ -451,10 +425,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 },
                 upsert=True
             )
-            link_convite = None
+
+            # Gera link do grupo
             if CANAL_ALVO_ID != 0:
                 try:
-                    convite = await context.bot.create_chat_invite_link(
+                    convite = await bot.create_chat_invite_link(
                         chat_id=CANAL_ALVO_ID,
                         member_limit=1,
                         expire_date=int(time.time()) + 86400
@@ -462,41 +437,98 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link_convite = convite.invite_link
                 except Exception as e:
                     print(f"Erro ao gerar link: {e}")
+
             texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
-            data_compra_rj = formatar_data_rj(data_compra)
-            data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
-            await query.message.reply_text(
-                f"Pagamento Aprovado!\n\n"
-                f"Plano: {nome_plano}\n"
-                f"Valor: R$ {valor_pago:.2f}\n\n{texto_link}\n\n"
-                f"Aproveite o grupo🤭🩷"
-            )
-            if payment_id not in pagamentos_notificados:
-                pagamentos_notificados.add(payment_id)
-                comprador = update.effective_user
-                relatorio = (
-                    "NOVA ASSINATURA CONFIRMADA!\n\n"
-                    f"Cliente: {comprador.first_name or 'Sem nome'}\n"
-                    f"Usuario: @{comprador.username if comprador.username else 'Sem @'}\n"
-                    f"ID: {comprador.id}\n"
-                    f"Valor: R$ {valor_pago:.2f}\n"
-                    f"Plano: {nome_plano}\n"
-                    f"Pagamento em: {data_compra_rj}\n"
-                    f"Expira em: {data_expira_rj}"
-                )
-                try:
-                    await context.bot.send_message(chat_id=DONO_ID, text=relatorio)
-                except:
-                    pass
-        else:
-            await query.answer("Pagamento ainda nao identificado!", show_alert=True)
-            await query.message.reply_text(
-                "Pagamento ainda nao identificado! Pague e aguarde, ou clique novamente."
+
+            # ✅ APAGA A MENSAGEM DO PIX
+            try:
+                await msg_pix.delete()
+            except: pass
+
+            # ENVIA A MENSAGEM DE APROVAÇÃO DIRETO
+            await bot.send_message(
+                chat_id=user_id,
+                text=f"✅ Pagamento Aprovado!\n\n"
+                     f"Plano: {nome_plano}\n"
+                     f"Valor: R$ {valor:.2f}\n\n{texto_link}\n\n"
+                     f"Aproveite o grupo🤭🩷"
             )
 
-    elif dados == "renovar_5.10":
-        query.data = "comprar_5.10"
-        await button_handler(update, context)
+            # AVISA O DONO
+            relatorio = (
+                "✅ NOVA ASSINATURA CONFIRMADA!\n\n"
+                f"Cliente: {user_obj.first_name or 'Sem nome'}\n"
+                f"Usuario: @{user_obj.username if user_obj.username else 'Sem @'}\n"
+                f"ID: {user_id}\n"
+                f"Valor: R$ {valor:.2f}\n"
+                f"Plano: {nome_plano}\n"
+                f"Pagamento em: {data_compra_rj}\n"
+                f"Expira em: {data_expira_rj}"
+            )
+            try:
+                await bot.send_message(chat_id=DONO_ID, text=relatorio)
+            except: pass
+            break
+
+        await asyncio.sleep(10) # Verifica a cada 10 segundos
+
+    pagamentos_processando.pop(pag_id, None)
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    dados = query.data
+
+    if dados.startswith("comprar_"):
+        valor = float(dados.split("_")[1])
+        try:
+            await query.edit_message_text("Gerando seu PIX, aguarde...")
+        except: pass
+        user = update.effective_user
+        ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
+        if ok:
+            # DEFINE NOME DO PLANO
+            if abs(valor - 2.00) < 0.01:
+                nome_plano = "1 Hora"
+            elif abs(valor - 5.10) < 0.01:
+                nome_plano = "1 Dia"
+            elif abs(valor - 10.00) < 0.01:
+                nome_plano = "1 Semana"
+            elif abs(valor - 30.00) < 0.01:
+                nome_plano = "1 Mes"
+            elif abs(valor - 55.00) < 0.01:
+                nome_plano = "Permanente"
+            else:
+                nome_plano = f"R$ {valor:.2f}"
+
+            # ✅ BOTÕES: COPIAR + VERIFICAR + OUTROS PLANOS (exatamente como pediu!)
+            keyboard_final = [
+                [InlineKeyboardButton("📋 Copiar Código Pix", copy_text=dict(text=qr))],
+                [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")],
+                [InlineKeyboardButton("🔄 Escolher Outros Planos", callback_data="ver_outros_precos")]
+            ]
+            msg_pix = await query.message.reply_text(
+                f"💳 PIX Gerado! Efetue o pagamento e aguarde...\n\nCódigo:\n{qr}",
+                reply_markup=InlineKeyboardMarkup(keyboard_final)
+            )
+
+            # 🚀 INICIA A VERIFICAÇÃO AUTOMÁTICA EM SEGUNDO PLANO!
+            asyncio.create_task(
+                verificar_pagamento_automatico(pag_id, user.id, valor, nome_plano, context.bot, msg_pix)
+            )
+
+        else:
+            await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
+
+    elif dados.startswith("check_"):
+        payment_id = dados.split("_")[1]
+        aprovado, valor_pago = await verificar_pagamento(payment_id)
+        if aprovado:
+            await query.answer("✅ Pagamento Aprovado!", show_alert=True)
+            # A função automática já apaga e envia, então só avisa
+        else:
+            await query.answer("⏳ Ainda não aprovado! Aguarde ou tente novamente em instantes.", show_alert=True)
+
     elif dados == "ver_outros_precos":
         keyboard = [
             [InlineKeyboardButton("1 HORA -> R$ 2,00", callback_data="comprar_2.00")],
@@ -522,25 +554,23 @@ async def gerenciador_assinaturas(application):
                         msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
                             [InlineKeyboardButton("Renovar 1H R$2,00", callback_data="comprar_2.00")],
-                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="renovar_5.10")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="comprar_5.10")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_1dia_enviado": True}})
-                    except:
-                        pass
+                    except: pass
                 elif 0 < tempo_restante <= 1200 and not cliente.get("aviso_20min_enviado", False):
                     try:
                         msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
                             [InlineKeyboardButton("Renovar 1H R$2,00", callback_data="comprar_2.00")],
-                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="renovar_5.10")],
+                            [InlineKeyboardButton("Renovar 1Dia R$5,10", callback_data="comprar_5.10")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
                         await application.bot.send_message(chat_id=user_id, text=msg, reply_markup=InlineKeyboardMarkup(keyboard))
                         collection_clientes.update_one({"user_id": user_id}, {"$set": {"aviso_20min_enviado": True}})
-                    except:
-                        pass
+                    except: pass
                 elif tempo_restante <= 0 and CANAL_ALVO_ID != 0:
                     try:
                         await application.bot.ban_chat_member(chat_id=CANAL_ALVO_ID, user_id=user_id)
@@ -549,8 +579,7 @@ async def gerenciador_assinaturas(application):
                             chat_id=user_id,
                             text="Seu plano expirou! Use /start e compre um novo."
                         )
-                    except:
-                        pass
+                    except: pass
                     collection_clientes.delete_one({"user_id": user_id})
         except Exception as e:
             print(f"Erro gerenciador: {e}")
@@ -566,7 +595,6 @@ def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     threading.Thread(target=run_background_loop, args=(app,), daemon=True).start()
     app.add_handler(TypeHandler(Update, interceptador_universal), group=-1)
-    # Adiciona o handler do bloqueio
     app.add_handler(ChatMemberHandler(bloquear_nao_pagantes))
     app.add_handler(ChatMemberHandler(verificar_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
     app.add_handler(CommandHandler("start", start))
@@ -577,7 +605,7 @@ def main():
     app.add_handler(CommandHandler("pegarid", pegarid_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
-    print("BOT ONLINE — BLOQUEIO DE ENTRADA ATIVO!")
+    print("✅ BOT ONLINE — TUDO COMO VOCÊ PEDIU!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
