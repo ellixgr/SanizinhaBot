@@ -379,92 +379,97 @@ async def verificar_pagamento(pag_id):
         print(f"Erro verificar pagamento: {e}")
         return False, 0
 
+# FUNÇÃO LIBERAR ACESSO REUTILIZÁVEL (usada pela automática E pelo botão manual)
+async def liberar_acesso(user_id, valor, nome_plano, bot, msg_pix=None):
+    if abs(valor - 2.00) < 0.01:
+        duracao_segundos = 3600
+    elif abs(valor - 5.10) < 0.01:
+        duracao_segundos = 86400
+    elif abs(valor - 10.00) < 0.01:
+        duracao_segundos = 86400 * 7
+    elif abs(valor - 30.00) < 0.01:
+        duracao_segundos = 86400 * 30
+    elif abs(valor - 55.00) < 0.01:
+        duracao_segundos = 86400 * 365 * 10
+    else:
+        duracao_segundos = int(valor) * 86400
+
+    tempo_expiracao = time.time() + duracao_segundos
+    data_compra = time.time()
+    data_compra_rj = formatar_data_rj(data_compra)
+    data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
+
+    user_obj = await bot.get_chat(user_id)
+    username = f"@{user_obj.username}" if user_obj.username else "Sem @"
+    collection_clientes.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "user_id": user_id,
+                "nome": user_obj.first_name or "Cliente",
+                "username": username,
+                "expira_em": tempo_expiracao,
+                "valor_pago": f"{valor:.2f}",
+                "data_compra": data_compra,
+                "aviso_1dia_enviado": False,
+                "aviso_20min_enviado": False
+            }
+        },
+        upsert=True
+    )
+
+    link_convite = None
+    if CANAL_ALVO_ID != 0:
+        try:
+            convite = await bot.create_chat_invite_link(
+                chat_id=CANAL_ALVO_ID,
+                member_limit=1,
+                expire_date=int(time.time()) + 86400
+            )
+            link_convite = convite.invite_link
+        except Exception as e:
+            print(f"Erro ao gerar link: {e}")
+
+    texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
+
+    # Apaga mensagem do pix se tiver
+    if msg_pix:
+        try:
+            await msg_pix.delete()
+        except: pass
+
+    await bot.send_message(
+        chat_id=user_id,
+        text=f"✅ Pagamento Aprovado!\n\n"
+             f"Plano: {nome_plano}\n"
+             f"Valor: R$ {valor:.2f}\n\n{texto_link}\n\n"
+             f"Aproveite o grupo🤭🩷"
+    )
+
+    relatorio = (
+        "✅ NOVA ASSINATURA CONFIRMADA!\n\n"
+        f"Cliente: {user_obj.first_name or 'Sem nome'}\n"
+        f"Usuario: @{user_obj.username if user_obj.username else 'Sem @'}\n"
+        f"ID: {user_id}\n"
+        f"Valor: R$ {valor:.2f}\n"
+        f"Plano: {nome_plano}\n"
+        f"Pagamento em: {data_compra_rj}\n"
+        f"Expira em: {data_expira_rj}"
+    )
+    try:
+        await bot.send_message(chat_id=DONO_ID, text=relatorio)
+    except: pass
+
 async def verificar_pagamento_automatico(pag_id, user_id, valor, nome_plano, bot, msg_pix):
     if pag_id in pagamentos_processando:
         return
     pagamentos_processando[pag_id] = True
 
-    link_convite = None
     for _ in range(30):
-        aprovado, valor_pago = await verificar_pagamento(pag_id)
+        aprovado, _ = await verificar_pagamento(pag_id)
         if aprovado:
-            if abs(valor - 2.00) < 0.01:
-                duracao_segundos = 3600
-            elif abs(valor - 5.10) < 0.01:
-                duracao_segundos = 86400
-            elif abs(valor - 10.00) < 0.01:
-                duracao_segundos = 86400 * 7
-            elif abs(valor - 30.00) < 0.01:
-                duracao_segundos = 86400 * 30
-            elif abs(valor - 55.00) < 0.01:
-                duracao_segundos = 86400 * 365 * 10
-            else:
-                duracao_segundos = int(valor) * 86400
-
-            tempo_expiracao = time.time() + duracao_segundos
-            data_compra = time.time()
-            data_compra_rj = formatar_data_rj(data_compra)
-            data_expira_rj = "Permanente" if nome_plano == "Permanente" else formatar_data_rj(tempo_expiracao)
-
-            user_obj = await bot.get_chat(user_id)
-            username = f"@{user_obj.username}" if user_obj.username else "Sem @"
-            collection_clientes.update_one(
-                {"user_id": user_id},
-                {
-                    "$set": {
-                        "user_id": user_id,
-                        "nome": user_obj.first_name or "Cliente",
-                        "username": username,
-                        "expira_em": tempo_expiracao,
-                        "valor_pago": f"{valor:.2f}",
-                        "data_compra": data_compra,
-                        "aviso_1dia_enviado": False,
-                        "aviso_20min_enviado": False
-                    }
-                },
-                upsert=True
-            )
-
-            if CANAL_ALVO_ID != 0:
-                try:
-                    convite = await bot.create_chat_invite_link(
-                        chat_id=CANAL_ALVO_ID,
-                        member_limit=1,
-                        expire_date=int(time.time()) + 86400
-                    )
-                    link_convite = convite.invite_link
-                except Exception as e:
-                    print(f"Erro ao gerar link: {e}")
-
-            texto_link = f"Aqui esta o seu link:\n{link_convite}" if link_convite else "Contate o suporte @Lyhhxv"
-
-            try:
-                await msg_pix.delete()
-            except: pass
-
-            await bot.send_message(
-                chat_id=user_id,
-                text=f"✅ Pagamento Aprovado!\n\n"
-                     f"Plano: {nome_plano}\n"
-                     f"Valor: R$ {valor:.2f}\n\n{texto_link}\n\n"
-                     f"Aproveite o grupo🤭🩷"
-            )
-
-            relatorio = (
-                "✅ NOVA ASSINATURA CONFIRMADA!\n\n"
-                f"Cliente: {user_obj.first_name or 'Sem nome'}\n"
-                f"Usuario: @{user_obj.username if user_obj.username else 'Sem @'}\n"
-                f"ID: {user_id}\n"
-                f"Valor: R$ {valor:.2f}\n"
-                f"Plano: {nome_plano}\n"
-                f"Pagamento em: {data_compra_rj}\n"
-                f"Expira em: {data_expira_rj}"
-            )
-            try:
-                await bot.send_message(chat_id=DONO_ID, text=relatorio)
-            except: pass
+            await liberar_acesso(user_id, valor, nome_plano, bot, msg_pix)
             break
-
         await asyncio.sleep(10)
 
     pagamentos_processando.pop(pag_id, None)
@@ -497,7 +502,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             keyboard_final = [
                 [InlineKeyboardButton("📋 Copiar Código Pix", copy_text=dict(text=qr))],
-                [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")],
+                [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}_{valor}_{nome_plano}")],
                 [InlineKeyboardButton("🔄 Escolher Outros Planos", callback_data="ver_outros_precos")]
             ]
             msg_pix = await query.message.reply_text(
@@ -513,15 +518,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
 
     elif dados.startswith("check_"):
-        payment_id = dados.split("_")[1]
-        aprovado, valor_pago = await verificar_pagamento(payment_id)
+        # AGORA PEGA VALOR E NOME DO PLANO TAMBÉM!
+        partes = dados.split("_")
+        payment_id = partes[1]
+        valor = float(partes[2])
+        nome_plano = "_".join(partes[3:])
+
+        aprovado, _ = await verificar_pagamento(payment_id)
         if aprovado:
-            await query.answer("✅ APROVADO! Acesso já liberado ✅", show_alert=True)
+            await query.answer("✅ APROVADO! Liberando acesso AGORA ✅", show_alert=True)
+            await liberar_acesso(update.effective_user.id, valor, nome_plano, context.bot)
         else:
-            await query.answer("⏳ AINDA NÃO PAGO! Faça o pagamento e aguarde ⏳", show_alert=True)
+            await query.answer("⏳ AINDA NÃO FOI PAGO! Faça o pix e aguarde ⏳", show_alert=True)
 
     elif dados == "ver_outros_precos":
-        # APAGA A MENSAGEM DO PIX E VOLTA AO MENU INICIAL COM VÍDEO NOVO
         try:
             await query.message.delete()
         except: pass
@@ -593,7 +603,7 @@ def main():
     app.add_handler(CommandHandler("pegarid", pegarid_cmd))
     app.add_handler(CommandHandler("clientes", clientes_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
-    print("✅ BOT ONLINE — TUDO RESOLVIDO!")
+    print("✅ BOT ONLINE — BOTÃO VERIFICAR FUNCIONANDO 100%!")
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":
