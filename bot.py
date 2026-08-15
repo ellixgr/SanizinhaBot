@@ -381,36 +381,35 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     dados = query.data
 
-if dados.startswith("comprar_"):
-    valor = float(dados.split("_")[1])
-    # Sempre edita a LEGENDA (funciona em vídeo)
-    try:
-        await query.edit_message_caption(
-            caption="⏳ Gerando seu PIX, aguarde um instante...",
-            reply_markup=None
-        )
-    except:
-        pass  # Se falhar, não tenta transformar em texto, ignora o erro
-    user = update.effective_user
-    ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
-    if ok:
-        msg_completa = (
-            "✅ PIX Gerado com Sucesso!\n\n"
-            f"💸 Valor: R$ {valor:.2f}\n\n"
-            f"📋 Código Pix Copia e Cola:\n`{qr}`"
-        )
-        keyboard_final = [
-            [InlineKeyboardButton("📋 Copiar Código", copy_text=dict(text=qr))],
-            [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")]
-        ]
-        await query.edit_message_text(
-            text=msg_completa,
-            reply_markup=InlineKeyboardMarkup(keyboard_final),
-            parse_mode="Markdown"
-        )
-    else:
-        await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n{qr}")
-
+    if dados.startswith("comprar_"):
+        valor = float(dados.split("_")[1])
+        # Sempre edita a LEGENDA (funciona em vídeo)
+        try:
+            await query.edit_message_caption(
+                caption="⏳ Gerando seu PIX, aguarde um instante...",
+                reply_markup=None
+            )
+        except:
+            pass  # Se falhar, não tenta transformar em texto, ignora o erro
+        user = update.effective_user
+        ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
+        if ok:
+            msg_completa = (
+                "✅ PIX Gerado com Sucesso!\n\n"
+                f"💸 Valor: R$ {valor:.2f}\n\n"
+                f"📋 Código Pix Copia e Cola:\n`{qr}`"
+            )
+            keyboard_final = [
+                [InlineKeyboardButton("📋 Copiar Código", copy_text=dict(text=qr))],
+                [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")]
+            ]
+            await query.edit_message_text(
+                text=msg_completa,
+                reply_markup=InlineKeyboardMarkup(keyboard_final),
+                parse_mode="Markdown"
+            )
+        else:
+            await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n{qr}")
 
     elif dados.startswith("check_"):
         payment_id = dados.split("_")[1]
@@ -432,10 +431,10 @@ if dados.startswith("comprar_"):
             elif abs(valor_pago - 55.00) < 0.01:
                 duracao_segundos = 315360000  # PERMANENTE
                 nome_plano = "Permanente"
-
             else:
                 duracao_segundos = int(valor_pago) * 86400
                 nome_plano = f"R$ {valor_pago:.2f}"
+
             user_id = update.effective_user.id
             tempo_expiracao = time.time() + duracao_segundos
             user_obj = update.effective_user
@@ -503,6 +502,7 @@ if dados.startswith("comprar_"):
     elif dados == "renovar_5.00":
         query.data = "comprar_5.00"
         await button_handler(update, context)
+
     elif dados == "ver_outros_precos":
         keyboard = [
             [InlineKeyboardButton("1 HORA -> R$ 2,00🔥", callback_data="comprar_2.00")],
@@ -511,11 +511,11 @@ if dados.startswith("comprar_"):
             [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
             [InlineKeyboardButton("Permanente -> R$ 55,00", callback_data="comprar_55.00")]
         ]
-        # ADICIONE NO INÍCIO DO CÓDIGO: from telegram import InputMediaVideo
         await query.edit_message_media(
             media=InputMediaVideo(media=random.choice(LISTA_VIDEOS_START), caption="𝗧𝗢𝗗𝗢𝗦 𝗢𝗦 𝗖𝗢𝗡𝗧𝗘𝗨𝗗𝗢𝗦 𝗩𝗔𝗭𝗔𝗗0𝗦🤫 𝗗𝗢 𝗠𝗢𝗠𝗘𝗡𝗧𝗢🥵\n\nEscolha seu plano VIP:"),
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
+
 
 async def gerenciador_assinaturas(application):
     await asyncio.sleep(10)
