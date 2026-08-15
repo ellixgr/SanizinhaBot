@@ -381,30 +381,36 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     dados = query.data
 
-    if dados.startswith("comprar_"):
-        valor = float(dados.split("_")[1])
-        try:
-            await query.edit_message_caption(caption="Gerando seu PIX, aguarde...", reply_markup=None)
-        except:
-            try:
-                await query.edit_message_text("Gerando seu PIX, aguarde...")
-            except:
-                pass
-        user = update.effective_user
-        ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
-        if ok:
-            msg_completa = (
-                "PIX Gerado com Sucesso!\n\n"
-                f"Valor: R$ {valor:.2f}\n\n"
-                f"Codigo Pix Copia e Cola:\n{qr}"
-            )
-            keyboard_final = [
-                [InlineKeyboardButton("Copiar Codigo Pix", copy_text=dict(text=qr))],
-                [InlineKeyboardButton("Verificar Pagamento", callback_data=f"check_{pag_id}")]
-            ]
-            await query.edit_message_text(msg_completa, reply_markup=InlineKeyboardMarkup(keyboard_final))
-        else:
-            await query.message.reply_text(f"Erro ao gerar o Pix:\n{qr}")
+if dados.startswith("comprar_"):
+    valor = float(dados.split("_")[1])
+    # Sempre edita a LEGENDA (funciona em vídeo)
+    try:
+        await query.edit_message_caption(
+            caption="⏳ Gerando seu PIX, aguarde um instante...",
+            reply_markup=None
+        )
+    except:
+        pass  # Se falhar, não tenta transformar em texto, ignora o erro
+    user = update.effective_user
+    ok, pag_id, qr = await gerar_pagamento(valor, user, context.bot)
+    if ok:
+        msg_completa = (
+            "✅ PIX Gerado com Sucesso!\n\n"
+            f"💸 Valor: R$ {valor:.2f}\n\n"
+            f"📋 Código Pix Copia e Cola:\n`{qr}`"
+        )
+        keyboard_final = [
+            [InlineKeyboardButton("📋 Copiar Código", copy_text=dict(text=qr))],
+            [InlineKeyboardButton("✅ Verificar Pagamento", callback_data=f"check_{pag_id}")]
+        ]
+        await query.edit_message_text(
+            text=msg_completa,
+            reply_markup=InlineKeyboardMarkup(keyboard_final),
+            parse_mode="Markdown"
+        )
+    else:
+        await query.message.reply_text(f"❌ Erro ao gerar o Pix:\n{qr}")
+
 
     elif dados.startswith("check_"):
         payment_id = dados.split("_")[1]
