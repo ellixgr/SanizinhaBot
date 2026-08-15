@@ -279,7 +279,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "suporte: @Lyhhxv"
     )
     keyboard = [
-        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 1,00🔥", callback_data="comprar_1.00")],
+        [InlineKeyboardButton("1 𝗛𝗢𝗥𝗔 -> R$ 1,00🔥", callback_data="comprar_2.00")],
         [InlineKeyboardButton("ACESSO POR 1 DIA -> R$ 5,00", callback_data="comprar_5.00")],
         [InlineKeyboardButton("ACESSO POR 1 SEMANA -> R$ 10,00", callback_data="comprar_10.00")],
         [InlineKeyboardButton("ACESSO POR 1 MES -> R$ 30,00", callback_data="comprar_30.00")],
@@ -412,7 +412,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         aprovado, valor_pago = await verificar_pagamento(payment_id)
         if aprovado:
             await query.answer("Pagamento Aprovado!", show_alert=True)
-            if abs(valor_pago - 1.00) < 0.01:
+            if abs(valor_pago - 2.00) < 0.01:
                 duracao_segundos = 3600
                 nome_plano = "1 Hora"
             elif abs(valor_pago - 5.00) < 0.01:
@@ -499,7 +499,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await button_handler(update, context)
     elif dados == "ver_outros_precos":
         keyboard = [
-            [InlineKeyboardButton("1 HORA -> R$ 1,00", callback_data="comprar_1.00")],
+            [InlineKeyboardButton("1 HORA -> R$ 2,00", callback_data="comprar_2.00")],
             [InlineKeyboardButton("1 Dia -> R$ 5,00", callback_data="comprar_5.00")],
             [InlineKeyboardButton("1 Semana -> R$ 10,00", callback_data="comprar_10.00")],
             [InlineKeyboardButton("1 Mes -> R$ 30,00", callback_data="comprar_30.00")],
@@ -521,7 +521,7 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO VENCE AMANHA! Renove agora!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_2.00")],
                             [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
@@ -533,7 +533,7 @@ async def gerenciador_assinaturas(application):
                     try:
                         msg = "SEU PLANO EXPIRA EM MINUTOS! Renove AGORA!"
                         keyboard = [
-                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_1.00")],
+                            [InlineKeyboardButton("Renovar 1H R$1,00", callback_data="comprar_2.00")],
                             [InlineKeyboardButton("Renovar 1Dia R$5,00", callback_data="renovar_5.00")],
                             [InlineKeyboardButton("Outros Planos", callback_data="ver_outros_precos")]
                         ]
